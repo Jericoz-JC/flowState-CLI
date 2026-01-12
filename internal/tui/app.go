@@ -165,9 +165,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch m.currentScreen {
 	case ScreenNotes:
-		return m.notesScreen.Update(msg)
+		_, cmd := m.notesScreen.Update(msg)
+		return m, cmd
 	case ScreenTodos:
-		return m.todosScreen.Update(msg)
+		_, cmd := m.todosScreen.Update(msg)
+		return m, cmd
 	}
 
 	return m, nil
@@ -219,19 +221,36 @@ func (m *Model) View() string {
 // homeView renders the home screen.
 //
 // Phase 1: Core Infrastructure
-//   - Application title and subtitle
-//   - List of available screens
+//   - Application title with ASCII art
+//   - List of available screens with styled shortcuts
 //   - Keyboard shortcuts reference
 func (m *Model) homeView() string {
+	// ASCII art logo
+	logo := styles.LogoStyle.Render(styles.LogoASCII)
+
+	// Subtitle
+	subtitle := styles.SubtitleStyle.Render("Your unified terminal productivity system")
+
+	// Menu items with styled shortcuts
+	menuItems := lipgloss.JoinVertical(
+		lipgloss.Left,
+		"",
+		styles.MenuItemStyle.Render(styles.KeyHint("n", "Notes")+"       - Capture and organize your thoughts"),
+		styles.MenuItemStyle.Render(styles.KeyHint("t", "Todos")+"       - Track your tasks and priorities"),
+		styles.MenuItemStyle.Render(styles.KeyHint("f", "Focus")+"       - Pomodoro timer for deep work"),
+		styles.MenuItemStyle.Render(styles.KeyHint("s", "Search")+"      - Find anything with semantic search"),
+		"",
+	)
+
+	// Quick tips
+	tips := styles.HelpStyle.Render("Press " + styles.KeyStyle.Render("q") + " to quit • " + styles.KeyStyle.Render("?") + " for help")
+
 	return lipgloss.JoinVertical(
 		lipgloss.Center,
-		styles.TitleStyle.Render("flowState"),
-		styles.SubtitleStyle.Render("Your unified terminal productivity system"),
-		"",
-		styles.MenuItemStyle.Render("[n] Notes"),
-		styles.MenuItemStyle.Render("[t] Todos"),
-		styles.MenuItemStyle.Render("[f] Focus Sessions"),
-		styles.MenuItemStyle.Render("[s] Semantic Search"),
+		logo,
+		subtitle,
+		menuItems,
+		tips,
 	)
 }
 
@@ -242,13 +261,30 @@ func (m *Model) homeView() string {
 //   - Session tracking
 //   - Statistics display
 func (m *Model) focusView() string {
-	return lipgloss.JoinVertical(
-		lipgloss.Center,
-		styles.TitleStyle.Render("Focus Session"),
-		styles.SubtitleStyle.Render("Coming soon..."),
+	title := styles.TitleStyle.Render("🍅 Focus Session")
+
+	timer := styles.TimerStyle.Render("25:00")
+
+	progress := styles.ProgressBarStyle.Render("████████████░░░░░░░░")
+
+	help := lipgloss.JoinVertical(
+		lipgloss.Left,
 		"",
-		styles.MenuItemStyle.Render("[h] Home"),
+		styles.HelpStyle.Render("This feature is coming soon!"),
+		"",
+		styles.MenuItemStyle.Render(styles.KeyHint("h", "Return to Home")),
 	)
+
+	content := lipgloss.JoinVertical(
+		lipgloss.Center,
+		title,
+		"",
+		timer,
+		progress,
+		help,
+	)
+
+	return styles.PanelStyle.Render(content)
 }
 
 // searchView placeholder for semantic search screen.
@@ -258,13 +294,27 @@ func (m *Model) focusView() string {
 //   - Results with similarity scores
 //   - Filter by tags/dates
 func (m *Model) searchView() string {
-	return lipgloss.JoinVertical(
-		lipgloss.Center,
-		styles.TitleStyle.Render("Semantic Search"),
-		styles.SubtitleStyle.Render("Coming soon..."),
+	title := styles.TitleStyle.Render("🔍 Semantic Search")
+
+	inputPlaceholder := styles.InputStyle.Render("Type your search query...")
+
+	help := lipgloss.JoinVertical(
+		lipgloss.Left,
 		"",
-		styles.MenuItemStyle.Render("[h] Home"),
+		styles.HelpStyle.Render("This feature is coming soon!"),
+		"",
+		styles.MenuItemStyle.Render(styles.KeyHint("h", "Return to Home")),
 	)
+
+	content := lipgloss.JoinVertical(
+		lipgloss.Center,
+		title,
+		"",
+		inputPlaceholder,
+		help,
+	)
+
+	return styles.PanelStyle.Render(content)
 }
 
 // Init is called once at program start.

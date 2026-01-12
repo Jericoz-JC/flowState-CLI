@@ -106,46 +106,49 @@ func (m *TodosListModel) LoadTodos() error {
 //   - Create/edit/delete operations
 //   - Status toggle with space bar
 //   - Form input handling
+//   - Tab to switch between fields
 func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "c":
-			m.showCreate = true
-			m.titleInput.Focus()
-			m.descInput.Blur()
-		case "e":
-			if len(m.list.VisibleItems()) > 0 {
-				if selected, ok := m.list.SelectedItem().(TodoItem); ok {
-					m.showCreate = true
-					m.titleInput.SetValue(selected.todo.Title)
-					m.descInput.SetValue(selected.todo.Description)
+		// Handle keys when in create/edit mode
+		if m.showCreate {
+			switch msg.String() {
+			case "tab", "shift+tab":
+				// Toggle focus between title and description
+				if m.titleInput.Focused() {
+					m.titleInput.Blur()
+					m.descInput.Focus()
+				} else {
+					m.descInput.Blur()
 					m.titleInput.Focus()
 				}
-			}
-		case "d":
-			if len(m.list.VisibleItems()) > 0 {
-				if selected, ok := m.list.SelectedItem().(TodoItem); ok {
-					m.store.DeleteTodo(selected.todo.ID)
-					m.LoadTodos()
-				}
-			}
-		case " ":
-			if len(m.list.VisibleItems()) > 0 && !m.showCreate {
-				if selected, ok := m.list.SelectedItem().(TodoItem); ok {
-					if selected.todo.Status == models.TodoStatusCompleted {
-						selected.todo.Status = models.TodoStatusPending
-					} else {
-						selected.todo.Status = models.TodoStatusCompleted
+				return m, nil
+			case "enter":
+				// Only save if title input is focused
+				if m.titleInput.Focused() {
+					title := strings.TrimSpace(m.titleInput.Value())
+					desc := strings.TrimSpace(m.descInput.Value())
+					if title != "" {
+						todo := &models.Todo{
+							Title:       title,
+							Description: desc,
+							Status:      models.TodoStatusPending,
+							Priority:    models.TodoPriorityMedium,
+						}
+						if err := m.store.CreateTodo(todo); err != nil {
+							return m, nil
+						}
+						m.showCreate = false
+						m.titleInput.SetValue("")
+						m.descInput.SetValue("")
+						m.LoadTodos()
 					}
-					m.store.UpdateTodo(&selected.todo)
-					m.LoadTodos()
 				}
-			}
-		case "enter":
-			if m.showCreate {
+				return m, nil
+			case "ctrl+s":
+				// Alternative save shortcut
 				title := strings.TrimSpace(m.titleInput.Value())
 				desc := strings.TrimSpace(m.descInput.Value())
 				if title != "" {
@@ -163,25 +166,65 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.descInput.SetValue("")
 					m.LoadTodos()
 				}
-			}
-		case "esc":
-			if m.showCreate {
+				return m, nil
+			case "esc":
 				m.showCreate = false
 				m.titleInput.SetValue("")
 				m.descInput.SetValue("")
+				return m, nil
+			}
+
+			// Update the focused input
+			var cmd tea.Cmd
+			if m.titleInput.Focused() {
+				m.titleInput, cmd = m.titleInput.Update(msg)
+			} else {
+				m.descInput, cmd = m.descInput.Update(msg)
+			}
+			cmds = append(cmds, cmd)
+			return m, tea.Batch(cmds...)
+		}
+
+		// Handle keys when viewing list
+		switch msg.String() {
+		case "c":
+			m.showCreate = true
+			m.titleInput.Focus()
+			m.descInput.Blur()
+		case "e":
+			if len(m.list.VisibleItems()) > 0 {
+				if selected, ok := m.list.SelectedItem().(TodoItem); ok {
+					m.showCreate = true
+					m.titleInput.SetValue(selected.todo.Title)
+					m.descInput.SetValue(selected.todo.Description)
+					m.titleInput.Focus()
+				}
+			}
+		case "d":
+			if len(m.list.VisibleItems()) > 0 {
+				if selected, ok := m.list.SelectedItem().(TodoItem); ok {
+					// TODO: Add confirmation dialog
+					m.store.DeleteTodo(selected.todo.ID)
+					m.LoadTodos()
+				}
+			}
+		case " ":
+			if len(m.list.VisibleItems()) > 0 {
+				if selected, ok := m.list.SelectedItem().(TodoItem); ok {
+					if selected.todo.Status == models.TodoStatusCompleted {
+						selected.todo.Status = models.TodoStatusPending
+					} else {
+						selected.todo.Status = models.TodoStatusCompleted
+					}
+					m.store.UpdateTodo(&selected.todo)
+					m.LoadTodos()
+				}
 			}
 		}
 
-		if m.showCreate {
-			var cmd tea.Cmd
-			m.titleInput, cmd = m.titleInput.Update(msg)
-			cmds = append(cmds, cmd)
-			m.descInput, _ = m.descInput.Update(msg)
-		} else {
-			var cmd tea.Cmd
-			m.list, cmd = m.list.Update(msg)
-			cmds = append(cmds, cmd)
-		}
+		var cmd tea.Cmd
+		m.list, cmd = m.list.Update(msg)
+		cmds = append(cmds, cmd)
 	}
 
 	return m, tea.Batch(cmds...)
@@ -194,18 +237,32 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 //   - Shows todo list otherwise
 func (m *TodosListModel) View() string {
 	if m.showCreate {
-		return lipgloss.JoinVertical(
+		// Show which field is focused
+		titleLabel := styles.SubtitleStyle.Render("Title")
+		descLabel := styles.SubtitleStyle.Render("Description")
+		if m.titleInput.Focused() {
+			titleLabel = styles.SelectedItemStyle.Render("▶ Title")
+		} else {
+			descLabel = styles.SelectedItemStyle.Render("▶ Description")
+		}
+
+		form := lipgloss.JoinVertical(
 			lipgloss.Left,
-			styles.TitleStyle.Render("Create Todo"),
+			styles.TitleStyle.Render("✅ Create Todo"),
 			"",
-			styles.SubtitleStyle.Render("Title"),
+			titleLabel,
 			m.titleInput.View(),
 			"",
-			styles.SubtitleStyle.Render("Description"),
+			descLabel,
 			m.descInput.View(),
 			"",
-			styles.SubtitleStyle.Render("[Enter] Save | [Esc] Cancel"),
+			styles.HelpStyle.Render(
+				styles.KeyHint("Tab", "Switch field")+" • "+
+					styles.KeyHint("Ctrl+S", "Save")+" • "+
+					styles.KeyHint("Esc", "Cancel"),
+			),
 		)
+		return styles.PanelStyle.Render(form)
 	}
 
 	return m.list.View()

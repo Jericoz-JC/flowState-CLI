@@ -61,7 +61,7 @@ type Store struct {
 //   - Creates indexes for performance
 //   - Handles existing databases gracefully
 func New(cfg *config.Config) (*Store, error) {
-	db, err := sql.Open("sqlite3", cfg.DbPath)
+	db, err := sql.Open("sqlite", cfg.DbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
