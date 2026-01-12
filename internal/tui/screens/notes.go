@@ -103,11 +103,84 @@ func (m *NotesListModel) LoadNotes() error {
 //   - Key bindings for navigation
 //   - Create/edit/delete operations
 //   - Form input handling
+//   - Tab to switch between fields
 func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Handle keys when in create/edit mode
+		if m.showCreate {
+			switch msg.String() {
+			case "tab", "shift+tab":
+				// Toggle focus between title and body
+				if m.titleInput.Focused() {
+					m.titleInput.Blur()
+					m.bodyInput.Focus()
+				} else {
+					m.bodyInput.Blur()
+					m.titleInput.Focus()
+				}
+				return m, nil
+			case "enter":
+				// Only save if title input is focused (allow newlines in body)
+				if m.titleInput.Focused() {
+					title := strings.TrimSpace(m.titleInput.Value())
+					body := strings.TrimSpace(m.bodyInput.Value())
+					if title != "" {
+						note := &models.Note{
+							Title: title,
+							Body:  body,
+							Tags:  extractTags(body),
+						}
+						if err := m.store.CreateNote(note); err != nil {
+							return m, nil
+						}
+						m.showCreate = false
+						m.titleInput.SetValue("")
+						m.bodyInput.SetValue("")
+						m.LoadNotes()
+					}
+				}
+				return m, nil
+			case "ctrl+s":
+				// Alternative save shortcut
+				title := strings.TrimSpace(m.titleInput.Value())
+				body := strings.TrimSpace(m.bodyInput.Value())
+				if title != "" {
+					note := &models.Note{
+						Title: title,
+						Body:  body,
+						Tags:  extractTags(body),
+					}
+					if err := m.store.CreateNote(note); err != nil {
+						return m, nil
+					}
+					m.showCreate = false
+					m.titleInput.SetValue("")
+					m.bodyInput.SetValue("")
+					m.LoadNotes()
+				}
+				return m, nil
+			case "esc":
+				m.showCreate = false
+				m.titleInput.SetValue("")
+				m.bodyInput.SetValue("")
+				return m, nil
+			}
+
+			// Update the focused input
+			var cmd tea.Cmd
+			if m.titleInput.Focused() {
+				m.titleInput, cmd = m.titleInput.Update(msg)
+			} else {
+				m.bodyInput, cmd = m.bodyInput.Update(msg)
+			}
+			cmds = append(cmds, cmd)
+			return m, tea.Batch(cmds...)
+		}
+
+		// Handle keys when viewing list
 		switch msg.String() {
 		case "c":
 			m.showCreate = true
@@ -125,47 +198,16 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d":
 			if len(m.list.VisibleItems()) > 0 {
 				if selected, ok := m.list.SelectedItem().(NoteItem); ok {
+					// TODO: Add confirmation dialog
 					m.store.DeleteNote(selected.note.ID)
 					m.LoadNotes()
 				}
 			}
-		case "enter":
-			if m.showCreate {
-				title := strings.TrimSpace(m.titleInput.Value())
-				body := strings.TrimSpace(m.bodyInput.Value())
-				if title != "" {
-					note := &models.Note{
-						Title: title,
-						Body:  body,
-						Tags:  extractTags(body),
-					}
-					if err := m.store.CreateNote(note); err != nil {
-						return m, nil
-					}
-					m.showCreate = false
-					m.titleInput.SetValue("")
-					m.bodyInput.SetValue("")
-					m.LoadNotes()
-				}
-			}
-		case "esc":
-			if m.showCreate {
-				m.showCreate = false
-				m.titleInput.SetValue("")
-				m.bodyInput.SetValue("")
-			}
 		}
 
-		if m.showCreate {
-			var cmd tea.Cmd
-			m.titleInput, cmd = m.titleInput.Update(msg)
-			cmds = append(cmds, cmd)
-			m.bodyInput, _ = m.bodyInput.Update(msg)
-		} else {
-			var cmd tea.Cmd
-			m.list, cmd = m.list.Update(msg)
-			cmds = append(cmds, cmd)
-		}
+		var cmd tea.Cmd
+		m.list, cmd = m.list.Update(msg)
+		cmds = append(cmds, cmd)
 	}
 
 	return m, tea.Batch(cmds...)
@@ -178,18 +220,32 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 //   - Shows note list otherwise
 func (m *NotesListModel) View() string {
 	if m.showCreate {
-		return lipgloss.JoinVertical(
+		// Show which field is focused
+		titleLabel := styles.SubtitleStyle.Render("Title")
+		bodyLabel := styles.SubtitleStyle.Render("Body")
+		if m.titleInput.Focused() {
+			titleLabel = styles.SelectedItemStyle.Render("▶ Title")
+		} else {
+			bodyLabel = styles.SelectedItemStyle.Render("▶ Body")
+		}
+
+		form := lipgloss.JoinVertical(
 			lipgloss.Left,
-			styles.TitleStyle.Render("Create Note"),
+			styles.TitleStyle.Render("📝 Create Note"),
 			"",
-			styles.SubtitleStyle.Render("Title"),
+			titleLabel,
 			m.titleInput.View(),
 			"",
-			styles.SubtitleStyle.Render("Body"),
+			bodyLabel,
 			m.bodyInput.View(),
 			"",
-			styles.SubtitleStyle.Render("[Enter] Save | [Esc] Cancel"),
+			styles.HelpStyle.Render(
+				styles.KeyHint("Tab", "Switch field")+" • "+
+					styles.KeyHint("Ctrl+S", "Save")+" • "+
+					styles.KeyHint("Esc", "Cancel"),
+			),
 		)
+		return styles.PanelStyle.Render(form)
 	}
 
 	return m.list.View()
