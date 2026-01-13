@@ -1,0 +1,44 @@
+{
+  "name": "flowstate-cli",
+  "version": "0.1.0",
+  "description": "A unified terminal productivity system for notes, todos, and focus sessions with semantic search",
+  "bin": {
+    "flowstate": "./bin/flowstate"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jericoz-JC/flowState-CLI.git"
+  },
+  "keywords": [
+    "cli",
+    "productivity",
+    "notes",
+    "todos",
+    "pomodoro",
+    "focus",
+    "terminal",
+    "tui"
+  ],
+  "author": "Jericoz-JC",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Jericoz-JC/flowState-CLI/issues"
+  },
+  "homepage": "https://github.com/Jericoz-JC/flowState-CLI#readme",
+  "engines": {
+    "node": ">=14"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
+}
+
