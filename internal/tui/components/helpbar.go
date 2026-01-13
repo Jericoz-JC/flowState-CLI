@@ -148,4 +148,47 @@ var (
 		{Key: "y", Description: "Yes", Primary: true},
 		{Key: "n", Description: "No"},
 	}
+
+	// FocusIdleHints are the hints when focus timer is idle
+	FocusIdleHints = []HelpHint{
+		{Key: "s", Description: "Start", Primary: true},
+		{Key: "d", Description: "Duration"},
+		{Key: "h", Description: "History"},
+		{Key: "Ctrl+H", Description: "Home"},
+	}
+
+	// FocusRunningHints are the hints when focus timer is running
+	FocusRunningHints = []HelpHint{
+		{Key: "p", Description: "Pause", Primary: true},
+		{Key: "c", Description: "Cancel"},
+		{Key: "b", Description: "Skip to Break"},
+	}
+
+	// FocusPausedHints are the hints when focus timer is paused
+	FocusPausedHints = []HelpHint{
+		{Key: "s", Description: "Resume", Primary: true},
+		{Key: "c", Description: "Cancel"},
+	}
+
+	// FocusBreakHints are the hints during break time
+	FocusBreakHints = []HelpHint{
+		{Key: "b", Description: "Skip Break", Primary: true},
+		{Key: "c", Description: "Cancel"},
+		{Key: "Esc", Description: "End Break"},
+	}
+
+	// FocusHistoryHints are the hints for session history view
+	FocusHistoryHints = []HelpHint{
+		{Key: "d", Description: "Delete"},
+		{Key: "Esc", Description: "Back", Primary: true},
+		{Key: "h", Description: "Back"},
+	}
+
+	// FocusDurationHints are the hints for duration picker
+	FocusDurationHints = []HelpHint{
+		{Key: "←/→", Description: "Select"},
+		{Key: "Tab", Description: "Switch"},
+		{Key: "Enter", Description: "Confirm", Primary: true},
+		{Key: "Esc", Description: "Cancel"},
+	}
 )

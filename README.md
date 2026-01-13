@@ -105,6 +105,20 @@ On first run, the application will:
 | `Enter` | Select / Confirm |
 | `Esc` | Close modal / Go back |
 
+#### Focus Sessions Screen
+| Key | Action |
+|-----|--------|
+| `s` | Start timer (or resume if paused) |
+| `p` | Pause timer |
+| `c` | Cancel current session |
+| `b` | Skip to break / Skip break |
+| `d` | Change work/break duration |
+| `h` | Toggle history view |
+| `←/→` | Select duration preset (in picker) |
+| `Tab` | Switch between work/break duration |
+| `Enter` | Confirm duration selection |
+| `Esc` | Return to idle / Cancel action |
+
 ## Project Structure
 
 ```
@@ -198,11 +212,12 @@ Goal: transform flowState-cli from a basic TUI into an intuitive, Notion/Obsidia
   - List notes loads only a body preview; full body loads on-demand when editing
   - Input character limits (title: 200, body: 20,000)
 
-### Phase 5: Focus Sessions
-- Pomodoro timer (25/5)
-- Custom durations
-- Session tracking
-- Streak statistics
+### Phase 5: Focus Sessions ✅
+- Pomodoro timer (25/5) with configurable work/break durations
+- Visual progress bar and large timer display
+- Session tracking with history view
+- Streak statistics (today's sessions, current streak, total focus time)
+- Duration presets: 15, 25, 45, 60 min work / 5, 10, 15 min break
 
 ### Phase 6: Semantic Search
 - ONNX embedding model
@@ -242,7 +257,6 @@ Goal: transform flowState-cli from a basic TUI into an intuitive, Notion/Obsidia
 - **Automated tests** - `TestListNotesTruncation` verifies excerpt loading
 
 ### 📋 Remaining Roadmap Items
-- Phase 5: Focus Sessions
 - Phase 6: Semantic Search
 - Phase 7: Mind Map View (graph foundation + visualization)
 - Phase 8: Context & Polish

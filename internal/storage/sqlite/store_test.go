@@ -538,6 +538,301 @@ func TestDuplicateLinkIgnored(t *testing.T) {
 	}
 }
 
+// TestSessionStats tests the session statistics calculations.
+func TestSessionStats(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+
+	cfg := &config.Config{DbPath: dbPath}
+	store, err := New(cfg)
+	if err != nil {
+		t.Fatalf("Failed to create store: %v", err)
+	}
+	defer store.Close()
+
+	// Initially no sessions
+	stats, err := store.GetSessionStats()
+	if err != nil {
+		t.Fatalf("Failed to get initial stats: %v", err)
+	}
+
+	if stats.TodaySessions != 0 {
+		t.Errorf("Expected 0 today sessions, got %d", stats.TodaySessions)
+	}
+
+	if stats.TotalSessions != 0 {
+		t.Errorf("Expected 0 total sessions, got %d", stats.TotalSessions)
+	}
+
+	if stats.CurrentStreak != 0 {
+		t.Errorf("Expected 0 streak, got %d", stats.CurrentStreak)
+	}
+
+	// Add a completed session for today
+	now := time.Now()
+	endTime := now.Add(25 * time.Minute)
+	session := &models.FocusSession{
+		StartTime: now,
+		EndTime:   &endTime,
+		Duration:  25 * 60, // 25 minutes in seconds
+		Status:    models.SessionStatusCompleted,
+	}
+
+	if err := store.CreateSession(session); err != nil {
+		t.Fatalf("Failed to create session: %v", err)
+	}
+
+	// Check stats again
+	stats, err = store.GetSessionStats()
+	if err != nil {
+		t.Fatalf("Failed to get stats after session: %v", err)
+	}
+
+	if stats.TodaySessions != 1 {
+		t.Errorf("Expected 1 today session, got %d", stats.TodaySessions)
+	}
+
+	if stats.TotalSessions != 1 {
+		t.Errorf("Expected 1 total session, got %d", stats.TotalSessions)
+	}
+
+	if stats.TotalFocusMinutes != 25 {
+		t.Errorf("Expected 25 focus minutes, got %d", stats.TotalFocusMinutes)
+	}
+
+	if stats.CurrentStreak != 1 {
+		t.Errorf("Expected 1 day streak, got %d", stats.CurrentStreak)
+	}
+}
+
+// TestSessionStreakCalculation tests the streak calculation with multiple days.
+func TestSessionStreakCalculation(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+
+	cfg := &config.Config{DbPath: dbPath}
+	store, err := New(cfg)
+	if err != nil {
+		t.Fatalf("Failed to create store: %v", err)
+	}
+	defer store.Close()
+
+	now := time.Now()
+
+	// Create sessions for today, yesterday, and day before yesterday (3-day streak)
+	for i := 0; i < 3; i++ {
+		sessionTime := now.AddDate(0, 0, -i)
+		endTime := sessionTime.Add(25 * time.Minute)
+		session := &models.FocusSession{
+			StartTime: sessionTime,
+			EndTime:   &endTime,
+			Duration:  25 * 60,
+			Status:    models.SessionStatusCompleted,
+		}
+		if err := store.CreateSession(session); err != nil {
+			t.Fatalf("Failed to create session for day -%d: %v", i, err)
+		}
+	}
+
+	streak, err := store.GetCurrentStreak()
+	if err != nil {
+		t.Fatalf("Failed to get streak: %v", err)
+	}
+
+	if streak != 3 {
+		t.Errorf("Expected 3 day streak, got %d", streak)
+	}
+}
+
+// TestSessionStreakBroken tests that streak is broken when a day is missed.
+func TestSessionStreakBroken(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+
+	cfg := &config.Config{DbPath: dbPath}
+	store, err := New(cfg)
+	if err != nil {
+		t.Fatalf("Failed to create store: %v", err)
+	}
+	defer store.Close()
+
+	now := time.Now()
+
+	// Create session for 3 days ago (streak is broken - no session today or yesterday)
+	sessionTime := now.AddDate(0, 0, -3)
+	endTime := sessionTime.Add(25 * time.Minute)
+	session := &models.FocusSession{
+		StartTime: sessionTime,
+		EndTime:   &endTime,
+		Duration:  25 * 60,
+		Status:    models.SessionStatusCompleted,
+	}
+	if err := store.CreateSession(session); err != nil {
+		t.Fatalf("Failed to create session: %v", err)
+	}
+
+	streak, err := store.GetCurrentStreak()
+	if err != nil {
+		t.Fatalf("Failed to get streak: %v", err)
+	}
+
+	if streak != 0 {
+		t.Errorf("Expected 0 streak (broken), got %d", streak)
+	}
+}
+
+// TestGetSessionsForDate tests retrieving sessions for a specific date.
+func TestGetSessionsForDate(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+
+	cfg := &config.Config{DbPath: dbPath}
+	store, err := New(cfg)
+	if err != nil {
+		t.Fatalf("Failed to create store: %v", err)
+	}
+	defer store.Close()
+
+	now := time.Now()
+	today := now.Truncate(24 * time.Hour)
+
+	// Create 2 sessions for today
+	for i := 0; i < 2; i++ {
+		sessionTime := now.Add(time.Duration(i) * time.Hour)
+		endTime := sessionTime.Add(25 * time.Minute)
+		session := &models.FocusSession{
+			StartTime: sessionTime,
+			EndTime:   &endTime,
+			Duration:  25 * 60,
+			Status:    models.SessionStatusCompleted,
+		}
+		if err := store.CreateSession(session); err != nil {
+			t.Fatalf("Failed to create session %d: %v", i, err)
+		}
+	}
+
+	// Create 1 session for yesterday
+	yesterday := now.AddDate(0, 0, -1)
+	endTime := yesterday.Add(25 * time.Minute)
+	yesterdaySession := &models.FocusSession{
+		StartTime: yesterday,
+		EndTime:   &endTime,
+		Duration:  25 * 60,
+		Status:    models.SessionStatusCompleted,
+	}
+	if err := store.CreateSession(yesterdaySession); err != nil {
+		t.Fatalf("Failed to create yesterday session: %v", err)
+	}
+
+	// Get sessions for today
+	todaySessions, err := store.GetSessionsForDate(today)
+	if err != nil {
+		t.Fatalf("Failed to get sessions for today: %v", err)
+	}
+
+	if len(todaySessions) != 2 {
+		t.Errorf("Expected 2 sessions for today, got %d", len(todaySessions))
+	}
+
+	// Get sessions for yesterday
+	yesterdayDate := yesterday.Truncate(24 * time.Hour)
+	yesterdaySessions, err := store.GetSessionsForDate(yesterdayDate)
+	if err != nil {
+		t.Fatalf("Failed to get sessions for yesterday: %v", err)
+	}
+
+	if len(yesterdaySessions) != 1 {
+		t.Errorf("Expected 1 session for yesterday, got %d", len(yesterdaySessions))
+	}
+}
+
+// TestDeleteSession tests session deletion.
+func TestDeleteSession(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+
+	cfg := &config.Config{DbPath: dbPath}
+	store, err := New(cfg)
+	if err != nil {
+		t.Fatalf("Failed to create store: %v", err)
+	}
+	defer store.Close()
+
+	now := time.Now()
+	endTime := now.Add(25 * time.Minute)
+	session := &models.FocusSession{
+		StartTime: now,
+		EndTime:   &endTime,
+		Duration:  25 * 60,
+		Status:    models.SessionStatusCompleted,
+	}
+
+	if err := store.CreateSession(session); err != nil {
+		t.Fatalf("Failed to create session: %v", err)
+	}
+
+	// Delete the session
+	if err := store.DeleteSession(session.ID); err != nil {
+		t.Fatalf("Failed to delete session: %v", err)
+	}
+
+	// Verify deletion
+	deleted, err := store.GetSession(session.ID)
+	if err != nil {
+		t.Fatalf("Unexpected error after delete: %v", err)
+	}
+
+	if deleted != nil {
+		t.Error("Session should be nil after deletion")
+	}
+}
+
+// TestCancelledSessionNotCountedInStats tests that cancelled sessions don't count.
+func TestCancelledSessionNotCountedInStats(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+
+	cfg := &config.Config{DbPath: dbPath}
+	store, err := New(cfg)
+	if err != nil {
+		t.Fatalf("Failed to create store: %v", err)
+	}
+	defer store.Close()
+
+	now := time.Now()
+	endTime := now.Add(10 * time.Minute)
+
+	// Create a cancelled session
+	session := &models.FocusSession{
+		StartTime: now,
+		EndTime:   &endTime,
+		Duration:  25 * 60,
+		Status:    models.SessionStatusCancelled, // Cancelled!
+	}
+
+	if err := store.CreateSession(session); err != nil {
+		t.Fatalf("Failed to create session: %v", err)
+	}
+
+	stats, err := store.GetSessionStats()
+	if err != nil {
+		t.Fatalf("Failed to get stats: %v", err)
+	}
+
+	// Cancelled sessions should not be counted
+	if stats.TodaySessions != 0 {
+		t.Errorf("Expected 0 today sessions (cancelled not counted), got %d", stats.TodaySessions)
+	}
+
+	if stats.TotalSessions != 0 {
+		t.Errorf("Expected 0 total sessions (cancelled not counted), got %d", stats.TotalSessions)
+	}
+
+	if stats.CurrentStreak != 0 {
+		t.Errorf("Expected 0 streak (cancelled not counted), got %d", stats.CurrentStreak)
+	}
+}
+
 // cleanupTestDB is a helper to ensure db is closed
 func cleanupTestDB(path string) {
 	os.Remove(path)
