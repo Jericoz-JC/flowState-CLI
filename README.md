@@ -19,28 +19,34 @@ flowState-cli keeps you in the flow by making knowledge capture, task management
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      flowState CLI                          │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │  Notes UI   │  │  Todos UI   │  │  Focus Session UI   │  │
-│  └──────┬──────┘  └──────┬──────┘  └──────────┬──────────┘  │
-│         │                │                     │             │
-│         └────────────────┼─────────────────────┘             │
-│                          │                                   │
-│                    ┌─────▼─────┐                            │
-│                    │  Bubble   │                            │
-│                    │   Tea     │                            │
-│                    └─────┬─────┘                            │
-│                          │                                   │
-│         ┌────────────────┼────────────────┐                 │
-│         ▼                ▼                ▼                 │
-│  ┌─────────────┐  ┌─────────────┐  ┌──────────────────┐    │
-│  │   SQLite    │  │   Qdrant    │  │  Embedding Model │    │
-│  │  (Metadata) │  │  (Vectors)  │  │  (all-MiniLM)    │    │
-│  └─────────────┘  └─────────────┘  └──────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph TUI [TUI Layer]
+        App[app.go]
+        Focus[focus.go]
+        Timer[Timer Component]
+        Stats[Stats Display]
+        History[History List]
+    end
+    
+    subgraph Storage [Storage Layer]
+        Store[store.go]
+        SQLite[(SQLite DB)]
+    end
+    
+    subgraph Models [Models]
+        Session[FocusSession]
+        SessionStats[SessionStats]
+    end
+    
+    App --> Focus
+    Focus --> Timer
+    Focus --> Stats
+    Focus --> History
+    Focus --> Store
+    Store --> SQLite
+    Store --> Session
+    Store --> SessionStats
 ```
 
 ## Tech Stack
