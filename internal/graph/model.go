@@ -5,7 +5,7 @@ import (
 	"math"
 	"sort"
 
-	"flowState-cli/internal/models"
+	"github.com/Jericoz-JC/flowState-CLI/internal/models"
 )
 
 // NodeKey creates a stable node identifier for graph nodes.
@@ -174,5 +174,3 @@ func TagColors(tags []string) map[string]string {
 	}
 	return out
 }
-
-

@@ -4,10 +4,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"flowState-cli/internal/config"
-	embeddings "flowState-cli/internal/embeddings"
-	"flowState-cli/internal/models"
-	"flowState-cli/internal/storage/sqlite"
+	"github.com/Jericoz-JC/flowState-CLI/internal/config"
+	embeddings "github.com/Jericoz-JC/flowState-CLI/internal/embeddings"
+	"github.com/Jericoz-JC/flowState-CLI/internal/models"
+	"github.com/Jericoz-JC/flowState-CLI/internal/storage/sqlite"
 )
 
 func newTestStoreAndSearcher(t *testing.T) (*sqlite.Store, *SemanticSearch) {
@@ -141,5 +141,3 @@ func TestSearchEmptyQuery(t *testing.T) {
 		t.Fatalf("expected 0 results for empty query, got %d", len(results))
 	}
 }
-
-

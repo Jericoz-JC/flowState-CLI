@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"flowState-cli/internal/config"
+	"github.com/Jericoz-JC/flowState-CLI/internal/config"
 )
 
 func BenchmarkEmbedding(b *testing.B) {
@@ -24,5 +24,3 @@ func BenchmarkEmbedding(b *testing.B) {
 		}
 	}
 }
-
-

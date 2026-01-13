@@ -153,5 +153,3 @@ func padRight(s string, n int) string {
 	}
 	return s + strings.Repeat(" ", n-len(r))
 }
-
-

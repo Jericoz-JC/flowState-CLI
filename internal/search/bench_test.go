@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"flowState-cli/internal/config"
-	embeddings "flowState-cli/internal/embeddings"
-	"flowState-cli/internal/models"
-	"flowState-cli/internal/storage/sqlite"
+	"github.com/Jericoz-JC/flowState-CLI/internal/config"
+	embeddings "github.com/Jericoz-JC/flowState-CLI/internal/embeddings"
+	"github.com/Jericoz-JC/flowState-CLI/internal/models"
+	"github.com/Jericoz-JC/flowState-CLI/internal/storage/sqlite"
 )
 
 func BenchmarkSearch1000Notes(b *testing.B) {
@@ -53,5 +53,3 @@ func BenchmarkSearch1000Notes(b *testing.B) {
 		}
 	}
 }
-
-

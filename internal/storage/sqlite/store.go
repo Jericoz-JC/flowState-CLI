@@ -37,8 +37,8 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"flowState-cli/internal/config"
-	"flowState-cli/internal/models"
+	"github.com/Jericoz-JC/flowState-CLI/internal/config"
+	"github.com/Jericoz-JC/flowState-CLI/internal/models"
 )
 
 // Store manages SQLite database operations for flowState.

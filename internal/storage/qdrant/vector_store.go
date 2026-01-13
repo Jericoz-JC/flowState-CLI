@@ -26,7 +26,7 @@ import (
 	"sort"
 	"sync"
 
-	"flowState-cli/internal/config"
+	"github.com/Jericoz-JC/flowState-CLI/internal/config"
 )
 
 // VectorStore manages vector embeddings for semantic search.

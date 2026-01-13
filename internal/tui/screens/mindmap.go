@@ -7,9 +7,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"flowState-cli/internal/graph"
-	"flowState-cli/internal/storage/sqlite"
-	"flowState-cli/internal/tui/components"
+	"github.com/Jericoz-JC/flowState-CLI/internal/graph"
+	"github.com/Jericoz-JC/flowState-CLI/internal/storage/sqlite"
+	"github.com/Jericoz-JC/flowState-CLI/internal/tui/components"
 )
 
 type MindMapModel struct {
@@ -236,5 +236,3 @@ func abs(x int) int {
 	}
 	return x
 }
-
-

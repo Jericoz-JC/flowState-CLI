@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"flowState-cli/internal/config"
+	"github.com/Jericoz-JC/flowState-CLI/internal/config"
 )
 
 func TestEmbedderModelDownload(t *testing.T) {
@@ -96,5 +96,3 @@ func TestEmbedSingleText(t *testing.T) {
 		t.Fatalf("modelPath mismatch: got=%s want=%s", e.modelPath, wantDir)
 	}
 }
-
-

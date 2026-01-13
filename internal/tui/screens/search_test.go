@@ -6,11 +6,11 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"flowState-cli/internal/config"
-	embeddings "flowState-cli/internal/embeddings"
-	"flowState-cli/internal/models"
-	"flowState-cli/internal/search"
-	"flowState-cli/internal/storage/sqlite"
+	"github.com/Jericoz-JC/flowState-CLI/internal/config"
+	embeddings "github.com/Jericoz-JC/flowState-CLI/internal/embeddings"
+	"github.com/Jericoz-JC/flowState-CLI/internal/models"
+	"github.com/Jericoz-JC/flowState-CLI/internal/search"
+	"github.com/Jericoz-JC/flowState-CLI/internal/storage/sqlite"
 )
 
 func newTestSearchModel(t *testing.T) SearchModel {
@@ -163,5 +163,3 @@ func TestOpenNoteFromSearch(t *testing.T) {
 		t.Fatalf("expected note_id %d, got %d", m.results[m.selected].NoteID, open.NoteID)
 	}
 }
-
-

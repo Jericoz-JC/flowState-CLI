@@ -7,10 +7,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"flowState-cli/internal/search"
-	"flowState-cli/internal/storage/sqlite"
-	"flowState-cli/internal/tui/components"
-	"flowState-cli/internal/tui/styles"
+	"github.com/Jericoz-JC/flowState-CLI/internal/search"
+	"github.com/Jericoz-JC/flowState-CLI/internal/storage/sqlite"
+	"github.com/Jericoz-JC/flowState-CLI/internal/tui/components"
+	"github.com/Jericoz-JC/flowState-CLI/internal/tui/styles"
 )
 
 // OpenNoteMsg is emitted by the Search screen when the user selects a result.
@@ -211,5 +211,3 @@ func firstLine(s string) string {
 	}
 	return s
 }
-
-

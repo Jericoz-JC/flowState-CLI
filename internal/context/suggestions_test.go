@@ -4,11 +4,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"flowState-cli/internal/config"
-	embeddings "flowState-cli/internal/embeddings"
-	"flowState-cli/internal/models"
-	"flowState-cli/internal/search"
-	"flowState-cli/internal/storage/sqlite"
+	"github.com/Jericoz-JC/flowState-CLI/internal/config"
+	embeddings "github.com/Jericoz-JC/flowState-CLI/internal/embeddings"
+	"github.com/Jericoz-JC/flowState-CLI/internal/models"
+	"github.com/Jericoz-JC/flowState-CLI/internal/search"
+	"github.com/Jericoz-JC/flowState-CLI/internal/storage/sqlite"
 )
 
 func TestSuggestRelatedNotes(t *testing.T) {
@@ -74,5 +74,3 @@ func TestSuggestLinksFromWikilinks(t *testing.T) {
 		t.Fatalf("unexpected links: %v", links)
 	}
 }
-
-

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"flowState-cli/internal/models"
+	"github.com/Jericoz-JC/flowState-CLI/internal/models"
 )
 
 func BenchmarkGraphRender(b *testing.B) {
@@ -41,5 +41,3 @@ func BenchmarkGraphRender(b *testing.B) {
 		_ = RenderGraphASCII(g, labels, pos, 120, 40, nil)
 	}
 }
-
-

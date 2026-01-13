@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/lipgloss"
 
-	"flowState-cli/internal/tui/styles"
+	"github.com/Jericoz-JC/flowState-CLI/internal/tui/styles"
 )
 
 func DefaultListDelegate() list.DefaultDelegate {

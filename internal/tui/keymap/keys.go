@@ -144,4 +144,3 @@ func FormatShortcut(key string) string {
 	}
 	return "Ctrl+" + key
 }
-

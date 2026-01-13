@@ -1,4 +1,4 @@
-module flowState-cli
+module github.com/Jericoz-JC/flowState-CLI
 
 go 1.22.2
 
