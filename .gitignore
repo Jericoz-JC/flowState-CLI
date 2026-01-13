@@ -39,3 +39,8 @@ models/
 
 # Config
 config.yaml
+
+# Environment variables (NEVER commit tokens/secrets)
+.env
+.env.*
+*.env
