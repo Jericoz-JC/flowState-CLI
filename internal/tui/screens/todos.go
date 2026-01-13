@@ -261,12 +261,16 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmds...)
 		}
 
-		// Handle keys when viewing list
+		// Handle keys when viewing list - process BEFORE passing to list
 		switch msg.String() {
 		case "c":
 			m.showCreate = true
+			m.editingID = 0
+			m.titleInput.SetValue("")
+			m.descInput.SetValue("")
 			m.titleInput.Focus()
 			m.descInput.Blur()
+			return m, nil // Return early to prevent list from processing
 		case "e":
 			if len(m.list.VisibleItems()) > 0 {
 				if selected, ok := m.list.SelectedItem().(TodoItem); ok {
@@ -277,6 +281,7 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.titleInput.Focus()
 				}
 			}
+			return m, nil
 		case "d":
 			if len(m.list.VisibleItems()) > 0 {
 				if selected, ok := m.list.SelectedItem().(TodoItem); ok {
@@ -284,6 +289,7 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.deleteTargetID = selected.todo.ID
 				}
 			}
+			return m, nil
 		case " ":
 			if len(m.list.VisibleItems()) > 0 {
 				if selected, ok := m.list.SelectedItem().(TodoItem); ok {
@@ -296,8 +302,10 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.LoadTodos()
 				}
 			}
+			return m, nil
 		}
 
+		// Pass other keys to list for navigation (j/k, up/down, etc.)
 		var cmd tea.Cmd
 		m.list, cmd = m.list.Update(msg)
 		cmds = append(cmds, cmd)
