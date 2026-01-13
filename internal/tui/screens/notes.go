@@ -256,12 +256,16 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmds...)
 		}
 
-		// Handle keys when viewing list
+		// Handle keys when viewing list - process BEFORE passing to list
 		switch msg.String() {
 		case "c":
 			m.showCreate = true
+			m.editingID = 0
+			m.titleInput.SetValue("")
+			m.bodyInput.SetValue("")
 			m.titleInput.Focus()
 			m.bodyInput.Blur()
+			return m, nil // Return early to prevent list from processing
 		case "e":
 			if len(m.list.VisibleItems()) > 0 {
 				if selected, ok := m.list.SelectedItem().(NoteItem); ok {
@@ -272,6 +276,7 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.titleInput.Focus()
 				}
 			}
+			return m, nil
 		case "d":
 			if len(m.list.VisibleItems()) > 0 {
 				if selected, ok := m.list.SelectedItem().(NoteItem); ok {
@@ -279,8 +284,10 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.deleteTargetID = selected.note.ID
 				}
 			}
+			return m, nil
 		}
 
+		// Pass other keys to list for navigation (j/k, up/down, etc.)
 		var cmd tea.Cmd
 		m.list, cmd = m.list.Update(msg)
 		cmds = append(cmds, cmd)
