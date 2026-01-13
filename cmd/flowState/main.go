@@ -32,6 +32,24 @@ import (
 )
 
 func main() {
+	// Phase 4: Robustness - File logging
+	f, err := tea.LogToFile("debug.log", "debug")
+	if err != nil {
+		fmt.Println("fatal:", err)
+		os.Exit(1)
+	}
+	defer f.Close()
+
+	// Phase 4: Robustness - Global Panic Recovery
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("CRITICAL PANIC: %v", r)
+			// Ensure terminal is reset even if p.Run() didn't exit cleanly
+			fmt.Printf("\n\nEncoutered a critical error: %v\nCheck debug.log for details.\n", r)
+			os.Exit(1)
+		}
+	}()
+
 	// Phase 1: Load configuration from ~/.config/flowState/
 	cfg, err := config.Load()
 	if err != nil {

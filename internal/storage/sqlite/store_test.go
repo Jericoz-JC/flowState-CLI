@@ -280,6 +280,52 @@ func TestListNotesEmpty(t *testing.T) {
 	}
 }
 
+// TestListNotesTruncation verifies that ListNotes returns truncated bodies.
+func TestListNotesTruncation(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+
+	cfg := &config.Config{DbPath: dbPath}
+	store, err := New(cfg)
+	if err != nil {
+		t.Fatalf("Failed to create store: %v", err)
+	}
+	defer store.Close()
+
+	// Create a note with > 100 chars
+	longBody := ""
+	for i := 0; i < 20; i++ {
+		longBody += "1234567890" // 10 chars * 20 = 200 chars
+	}
+
+	note := &models.Note{Title: "Long Note", Body: longBody}
+	store.CreateNote(note)
+
+	// List notes
+	notes, err := store.ListNotes()
+	if err != nil {
+		t.Fatalf("ListNotes failed: %v", err)
+	}
+
+	if len(notes) != 1 {
+		t.Fatalf("Expected 1 note, got %d", len(notes))
+	}
+
+	// Verify truncation
+	if len(notes[0].Body) != 100 {
+		t.Errorf("Expected body length 100, got %d", len(notes[0].Body))
+	}
+
+	// Verify full fetch still works
+	fullNote, err := store.GetNote(notes[0].ID)
+	if err != nil {
+		t.Fatalf("GetNote failed: %v", err)
+	}
+	if len(fullNote.Body) != 200 {
+		t.Errorf("Expected full body length 200, got %d", len(fullNote.Body))
+	}
+}
+
 // TestListTodosEmpty tests that an empty database returns empty slice.
 func TestListTodosEmpty(t *testing.T) {
 	tmpDir := t.TempDir()
