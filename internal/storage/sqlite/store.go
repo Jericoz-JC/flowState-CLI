@@ -27,9 +27,12 @@
 package sqlite
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"math"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -70,6 +73,11 @@ func New(cfg *config.Config) (*Store, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
+	// Enable foreign key constraints (needed for cascading deletes).
+	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
+		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
+	}
+
 	store := &Store{db: db}
 	if err := store.migrate(); err != nil {
 		return nil, fmt.Errorf("failed to migrate: %w", err)
@@ -102,6 +110,11 @@ func (s *Store) migrate() error {
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
+		`CREATE TABLE IF NOT EXISTS note_vectors (
+			note_id INTEGER PRIMARY KEY REFERENCES notes(id) ON DELETE CASCADE,
+			embedding BLOB NOT NULL,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
 		`CREATE TABLE IF NOT EXISTS todos (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			title TEXT NOT NULL,
@@ -132,6 +145,7 @@ func (s *Store) migrate() error {
 			UNIQUE(source_type, source_id, target_type, target_id)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_notes_tags ON notes(tags)`,
+		`CREATE INDEX IF NOT EXISTS idx_note_vectors_updated_at ON note_vectors(updated_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_todos_status ON todos(status)`,
 		`CREATE INDEX IF NOT EXISTS idx_todos_note_id ON todos(note_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_links_source ON links(source_type, source_id)`,
@@ -149,6 +163,149 @@ func (s *Store) migrate() error {
 
 func (s *Store) Close() error {
 	return s.db.Close()
+}
+
+// Note vector operations (Phase 6: Semantic Search)
+
+type NoteVectorSearchResult struct {
+	NoteID int64
+	Score  float32
+}
+
+func (s *Store) UpsertNoteEmbedding(noteID int64, embedding []float32) error {
+	if len(embedding) != 384 {
+		return fmt.Errorf("embedding must be 384-dim, got %d", len(embedding))
+	}
+
+	blob, err := encodeFloat32Slice(embedding)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.db.Exec(
+		`INSERT INTO note_vectors (note_id, embedding, updated_at)
+		 VALUES (?, ?, CURRENT_TIMESTAMP)
+		 ON CONFLICT(note_id) DO UPDATE SET embedding=excluded.embedding, updated_at=CURRENT_TIMESTAMP`,
+		noteID, blob,
+	)
+	return err
+}
+
+func (s *Store) GetNoteEmbedding(noteID int64) ([]float32, bool, error) {
+	var blob []byte
+	err := s.db.QueryRow("SELECT embedding FROM note_vectors WHERE note_id = ?", noteID).Scan(&blob)
+	if err == sql.ErrNoRows {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+
+	emb, err := decodeFloat32Slice(blob)
+	if err != nil {
+		return nil, false, err
+	}
+	return emb, true, nil
+}
+
+func (s *Store) DeleteNoteEmbedding(noteID int64) error {
+	_, err := s.db.Exec("DELETE FROM note_vectors WHERE note_id = ?", noteID)
+	return err
+}
+
+// SearchNoteEmbeddings performs a cosine-similarity scan over stored embeddings.
+// This is intentionally simple and pure-Go; it persists vectors in SQLite and computes ranking in-process.
+func (s *Store) SearchNoteEmbeddings(query []float32, limit int) ([]NoteVectorSearchResult, error) {
+	if len(query) != 384 {
+		return nil, fmt.Errorf("query embedding must be 384-dim, got %d", len(query))
+	}
+	if limit <= 0 {
+		return []NoteVectorSearchResult{}, nil
+	}
+
+	rows, err := s.db.Query("SELECT note_id, embedding FROM note_vectors")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	results := make([]NoteVectorSearchResult, 0)
+	for rows.Next() {
+		var noteID int64
+		var blob []byte
+		if err := rows.Scan(&noteID, &blob); err != nil {
+			return nil, err
+		}
+		emb, err := decodeFloat32Slice(blob)
+		if err != nil {
+			return nil, err
+		}
+		score := cosineSimilarity(query, emb)
+		results = append(results, NoteVectorSearchResult{NoteID: noteID, Score: score})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Sort by score desc, then apply limit.
+	sortByScoreDesc(results)
+	if len(results) > limit {
+		results = results[:limit]
+	}
+	return results, nil
+}
+
+func sortByScoreDesc(results []NoteVectorSearchResult) {
+	// Small custom sort to avoid importing sort in this already-large file.
+	for i := 0; i < len(results); i++ {
+		best := i
+		for j := i + 1; j < len(results); j++ {
+			if results[j].Score > results[best].Score {
+				best = j
+			}
+		}
+		results[i], results[best] = results[best], results[i]
+	}
+}
+
+func cosineSimilarity(a, b []float32) float32 {
+	if len(a) != len(b) {
+		return 0
+	}
+	var dot, normA, normB float32
+	for i := range a {
+		dot += a[i] * b[i]
+		normA += a[i] * a[i]
+		normB += b[i] * b[i]
+	}
+	if normA == 0 || normB == 0 {
+		return 0
+	}
+	return dot / float32(math.Sqrt(float64(normA))*math.Sqrt(float64(normB)))
+}
+
+func encodeFloat32Slice(v []float32) ([]byte, error) {
+	buf := bytes.NewBuffer(make([]byte, 0, len(v)*4))
+	for _, f := range v {
+		if err := binary.Write(buf, binary.LittleEndian, f); err != nil {
+			return nil, fmt.Errorf("encode embedding: %w", err)
+		}
+	}
+	return buf.Bytes(), nil
+}
+
+func decodeFloat32Slice(b []byte) ([]float32, error) {
+	if len(b)%4 != 0 {
+		return nil, fmt.Errorf("invalid embedding blob length %d", len(b))
+	}
+	out := make([]float32, len(b)/4)
+	r := bytes.NewReader(b)
+	for i := range out {
+		if err := binary.Read(r, binary.LittleEndian, &out[i]); err != nil {
+			return nil, fmt.Errorf("decode embedding: %w", err)
+		}
+	}
+	return out, nil
 }
 
 // Note Operations (Phase 2: Notes)
@@ -606,4 +763,28 @@ func (s *Store) GetLinksForItem(itemType string, itemID int64) ([]models.Link, e
 func (s *Store) DeleteLink(id int64) error {
 	_, err := s.db.Exec("DELETE FROM links WHERE id = ?", id)
 	return err
+}
+
+// ListLinks returns all links in the database.
+func (s *Store) ListLinks() ([]models.Link, error) {
+	rows, err := s.db.Query(
+		"SELECT id, source_type, source_id, target_type, target_id, link_type, created_at FROM links ORDER BY created_at DESC",
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var links []models.Link
+	for rows.Next() {
+		var l models.Link
+		if err := rows.Scan(&l.ID, &l.SourceType, &l.SourceID, &l.TargetType, &l.TargetID, &l.LinkType, &l.CreatedAt); err != nil {
+			return nil, err
+		}
+		links = append(links, l)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return links, nil
 }

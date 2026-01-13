@@ -124,6 +124,17 @@ func (m *NotesListModel) GetSelectedNote() *models.Note {
 	return nil
 }
 
+// SelectNoteByID selects a note in the list by its ID (best-effort).
+func (m *NotesListModel) SelectNoteByID(id int64) {
+	items := m.list.Items()
+	for i, it := range items {
+		if ni, ok := it.(NoteItem); ok && ni.note.ID == id {
+			m.list.Select(i)
+			return
+		}
+	}
+}
+
 // LoadNotes refreshes the note list from the database.
 func (m *NotesListModel) LoadNotes() error {
 	notes, err := m.store.ListNotes()

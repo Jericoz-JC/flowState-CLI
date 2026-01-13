@@ -118,6 +118,15 @@ func IsModSlash(msg tea.KeyMsg) bool {
 	return key == "ctrl+/"
 }
 
+// IsModG checks if the key message is Ctrl+G (or Cmd+G on macOS).
+func IsModG(msg tea.KeyMsg) bool {
+	key := strings.ToLower(msg.String())
+	if IsMacOS() {
+		return key == "cmd+g" || key == "ctrl+g"
+	}
+	return key == "ctrl+g"
+}
+
 // ModKeyDisplay returns the display string for the modifier key.
 // Returns "⌘" on macOS, "Ctrl" on Windows/Linux.
 func ModKeyDisplay() string {
