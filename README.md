@@ -183,39 +183,28 @@ Goal: transform flowState-cli from a basic TUI into an intuitive, Notion/Obsidia
 - Enhanced tagging with clearer visual indicators
 - Mind map foundation for future graph visualization
 
-#### What’s implemented (Phase 4)
+#### Implemented in Phase 4 ✅
 - Persistent help hints via unified bottom help bar
 - Screen headers with consistent titles (and breadcrumb support in the component)
-- Quick Capture modal available globally (`Ctrl+X`)
+- Quick Capture modal available globally (`Ctrl+X` / `⌘X`)
+- Notes preview mode (`p`)
+- `/` filter/search on Notes and Todos
+- Tag filtering (`t`) and Todos status filtering (`f`)
+- Wikilinks: `[[Note Name]]` parsing + auto-link creation (with placeholders when needed)
+- Cross-platform modifier handling (`Ctrl` on Windows/Linux, `⌘` on macOS)
 - Performance + stability hardening:
   - Global panic recovery + `debug.log`
   - DB integrity check on startup (`PRAGMA integrity_check`)
   - List notes loads only a body preview; full body loads on-demand when editing
   - Input character limits (title: 200, body: 20,000)
 
-#### Still planned (Phase 4 follow-ups)
-- Wikilinks:
-  - Parse `[[Note Name]]` in note body
-  - Auto-create links and/or placeholder notes for missing targets
-  - Highlight wikilinks in rendered view
-- Tag filtering UX:
-  - `/` filter/search on lists (Notes + Todos)
-  - Optional tag sidebar + tag selection to filter
-- Mind map / graph foundation:
-  - Store methods to return note graph nodes + edges for future visualization
-
-#### User review needed (decisions)
-- Markdown preview in notes: do we want a preview mode, or keep edit-only for now?
-- Preferred Quick Capture shortcut: keep `Ctrl+X`, or add `/` command palette / slash capture?
-- Should tags be “clickable”/selectable in TUI to filter notes?
-
-### Phase 5: Focus Sessions (Previously Phase 4)
+### Phase 5: Focus Sessions
 - Pomodoro timer (25/5)
 - Custom durations
 - Session tracking
 - Streak statistics
 
-### Phase 6: Semantic Search (Previously Phase 5)
+### Phase 6: Semantic Search
 - ONNX embedding model
 - Vector indexing
 - Natural language queries
@@ -227,7 +216,7 @@ Goal: transform flowState-cli from a basic TUI into an intuitive, Notion/Obsidia
 - Cluster detection
 - Tag-based coloring
 
-### Phase 8: Context & Polish (Previously Phase 6)
+### Phase 8: Context & Polish
 - Context-aware suggestions
 - Quick capture
 - UI polish
@@ -252,9 +241,11 @@ Goal: transform flowState-cli from a basic TUI into an intuitive, Notion/Obsidia
 - **Input limits** - Title: 200 chars, Body: 20,000 chars
 - **Automated tests** - `TestListNotesTruncation` verifies excerpt loading
 
-### 📋 Remaining (Phase 4 Follow-ups)
-- Tag sidebar with all unique tags and counts
-- Mind map graph foundation (`GetNoteGraph()`, `GraphNode`, `GraphEdge`) for Phase 7
+### 📋 Remaining Roadmap Items
+- Phase 5: Focus Sessions
+- Phase 6: Semantic Search
+- Phase 7: Mind Map View (graph foundation + visualization)
+- Phase 8: Context & Polish
 
 ## Keyboard Shortcuts (Phase 4 Additions)
 | Key | Action |
