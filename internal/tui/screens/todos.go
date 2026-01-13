@@ -46,12 +46,15 @@ import (
 //   - [~] In progress
 //   - [x] Completed
 type TodosListModel struct {
-	list       list.Model
-	store      *sqlite.Store
-	showCreate bool
-	titleInput components.TextInputModel
-	descInput  components.TextAreaModel
-	filter     string
+	list             list.Model
+	store            *sqlite.Store
+	showCreate       bool
+	editingID        int64 // 0 = creating new, >0 = editing existing
+	confirmingDelete bool
+	deleteTargetID   int64
+	titleInput       components.TextInputModel
+	descInput        components.TextAreaModel
+	filter           string
 }
 
 // NewTodosListModel creates a new todos list screen.
@@ -64,12 +67,15 @@ func NewTodosListModel(store *sqlite.Store) TodosListModel {
 	l.SetShowHelp(true)
 
 	return TodosListModel{
-		list:       l,
-		store:      store,
-		showCreate: false,
-		titleInput: components.NewTextInput("Todo title"),
-		descInput:  components.NewTextArea("Description (optional)"),
-		filter:     "",
+		list:             l,
+		store:            store,
+		showCreate:       false,
+		editingID:        0,
+		confirmingDelete: false,
+		deleteTargetID:   0,
+		titleInput:       components.NewTextInput("Todo title"),
+		descInput:        components.NewTextArea("Description (optional)"),
+		filter:           "",
 	}
 }
 
@@ -112,6 +118,23 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Handle delete confirmation dialog
+		if m.confirmingDelete {
+			switch msg.String() {
+			case "y", "Y":
+				m.store.DeleteTodo(m.deleteTargetID)
+				m.confirmingDelete = false
+				m.deleteTargetID = 0
+				m.LoadTodos()
+				return m, nil
+			case "n", "N", "esc":
+				m.confirmingDelete = false
+				m.deleteTargetID = 0
+				return m, nil
+			}
+			return m, nil
+		}
+
 		// Handle keys when in create/edit mode
 		if m.showCreate {
 			switch msg.String() {
@@ -131,16 +154,31 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					title := strings.TrimSpace(m.titleInput.Value())
 					desc := strings.TrimSpace(m.descInput.Value())
 					if title != "" {
-						todo := &models.Todo{
-							Title:       title,
-							Description: desc,
-							Status:      models.TodoStatusPending,
-							Priority:    models.TodoPriorityMedium,
-						}
-						if err := m.store.CreateTodo(todo); err != nil {
-							return m, nil
+						if m.editingID > 0 {
+							// Update existing todo - fetch to preserve other fields
+							existing, err := m.store.GetTodo(m.editingID)
+							if err != nil || existing == nil {
+								return m, nil
+							}
+							existing.Title = title
+							existing.Description = desc
+							if err := m.store.UpdateTodo(existing); err != nil {
+								return m, nil
+							}
+						} else {
+							// Create new todo
+							todo := &models.Todo{
+								Title:       title,
+								Description: desc,
+								Status:      models.TodoStatusPending,
+								Priority:    models.TodoPriorityMedium,
+							}
+							if err := m.store.CreateTodo(todo); err != nil {
+								return m, nil
+							}
 						}
 						m.showCreate = false
+						m.editingID = 0
 						m.titleInput.SetValue("")
 						m.descInput.SetValue("")
 						m.LoadTodos()
@@ -152,16 +190,31 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				title := strings.TrimSpace(m.titleInput.Value())
 				desc := strings.TrimSpace(m.descInput.Value())
 				if title != "" {
-					todo := &models.Todo{
-						Title:       title,
-						Description: desc,
-						Status:      models.TodoStatusPending,
-						Priority:    models.TodoPriorityMedium,
-					}
-					if err := m.store.CreateTodo(todo); err != nil {
-						return m, nil
+					if m.editingID > 0 {
+						// Update existing todo - fetch to preserve other fields
+						existing, err := m.store.GetTodo(m.editingID)
+						if err != nil || existing == nil {
+							return m, nil
+						}
+						existing.Title = title
+						existing.Description = desc
+						if err := m.store.UpdateTodo(existing); err != nil {
+							return m, nil
+						}
+					} else {
+						// Create new todo
+						todo := &models.Todo{
+							Title:       title,
+							Description: desc,
+							Status:      models.TodoStatusPending,
+							Priority:    models.TodoPriorityMedium,
+						}
+						if err := m.store.CreateTodo(todo); err != nil {
+							return m, nil
+						}
 					}
 					m.showCreate = false
+					m.editingID = 0
 					m.titleInput.SetValue("")
 					m.descInput.SetValue("")
 					m.LoadTodos()
@@ -169,6 +222,7 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case "esc":
 				m.showCreate = false
+				m.editingID = 0
 				m.titleInput.SetValue("")
 				m.descInput.SetValue("")
 				return m, nil
@@ -195,6 +249,7 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.list.VisibleItems()) > 0 {
 				if selected, ok := m.list.SelectedItem().(TodoItem); ok {
 					m.showCreate = true
+					m.editingID = selected.todo.ID
 					m.titleInput.SetValue(selected.todo.Title)
 					m.descInput.SetValue(selected.todo.Description)
 					m.titleInput.Focus()
@@ -203,9 +258,8 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d":
 			if len(m.list.VisibleItems()) > 0 {
 				if selected, ok := m.list.SelectedItem().(TodoItem); ok {
-					// TODO: Add confirmation dialog
-					m.store.DeleteTodo(selected.todo.ID)
-					m.LoadTodos()
+					m.confirmingDelete = true
+					m.deleteTargetID = selected.todo.ID
 				}
 			}
 		case " ":
@@ -236,6 +290,22 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 //   - Shows create/edit form when active
 //   - Shows todo list otherwise
 func (m *TodosListModel) View() string {
+	// Delete confirmation dialog
+	if m.confirmingDelete {
+		confirmDialog := lipgloss.JoinVertical(
+			lipgloss.Center,
+			styles.TitleStyle.Render("⚠️ Delete Todo?"),
+			"",
+			styles.SubtitleStyle.Render("This action cannot be undone."),
+			"",
+			styles.HelpStyle.Render(
+				styles.KeyHint("y", "Yes, delete")+" • "+
+					styles.KeyHint("n", "No, cancel"),
+			),
+		)
+		return styles.PanelStyle.Render(confirmDialog)
+	}
+
 	if m.showCreate {
 		// Show which field is focused
 		titleLabel := styles.SubtitleStyle.Render("Title")
@@ -246,9 +316,15 @@ func (m *TodosListModel) View() string {
 			descLabel = styles.SelectedItemStyle.Render("▶ Description")
 		}
 
+		// Dynamic title for create vs edit
+		formTitle := "✅ Create Todo"
+		if m.editingID > 0 {
+			formTitle = "✅ Edit Todo"
+		}
+
 		form := lipgloss.JoinVertical(
 			lipgloss.Left,
-			styles.TitleStyle.Render("✅ Create Todo"),
+			styles.TitleStyle.Render(formTitle),
 			"",
 			titleLabel,
 			m.titleInput.View(),
@@ -263,6 +339,21 @@ func (m *TodosListModel) View() string {
 			),
 		)
 		return styles.PanelStyle.Render(form)
+	}
+
+	// Empty state
+	if len(m.list.Items()) == 0 {
+		emptyState := lipgloss.JoinVertical(
+			lipgloss.Center,
+			styles.TitleStyle.Render("✅ Todos"),
+			"",
+			styles.SubtitleStyle.Render("No todos yet. Add something to get done!"),
+			"",
+			styles.HelpStyle.Render(
+				styles.KeyHint("c", "Create your first todo"),
+			),
+		)
+		return styles.PanelStyle.Render(emptyState)
 	}
 
 	return m.list.View()
