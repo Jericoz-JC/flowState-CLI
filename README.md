@@ -13,7 +13,9 @@ flowState-cli keeps you in the flow by making knowledge capture, task management
 - **Focus Sessions**: Pomodoro-style timer with session tracking
 - **Semantic Search**: Local ONNX-powered semantic search with embeddings
 - **Linking System**: Connect notes and todos through relationships
-- **Tagging**: Simple tagging and filtering across all content
+- **Tagging**: Simple tagging with `#hashtag` syntax, auto-extracted from content
+- **Quick Capture**: `Ctrl+X` to instantly capture a thought from anywhere
+- **Intuitive Navigation**: Persistent help bar with context-sensitive shortcuts
 
 ## Architecture
 
@@ -72,6 +74,7 @@ On first run, the application will:
 #### Global Navigation
 | Key | Action |
 |-----|--------|
+| `Ctrl+X` | Quick capture note (from anywhere) |
 | `Ctrl+N` | Notes screen |
 | `Ctrl+T` | Todos screen |
 | `Ctrl+F` | Focus session screen |

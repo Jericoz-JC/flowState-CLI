@@ -55,6 +55,10 @@ type TodosListModel struct {
 	titleInput       components.TextInputModel
 	descInput        components.TextAreaModel
 	filter           string
+	header           components.Header
+	helpBar          components.HelpBar
+	width            int
+	height           int
 }
 
 // NewTodosListModel creates a new todos list screen.
@@ -63,8 +67,9 @@ func NewTodosListModel(store *sqlite.Store) TodosListModel {
 	delegate := list.NewDefaultDelegate()
 
 	l := list.New(items, delegate, 0, 0)
-	l.Title = "Todos"
-	l.SetShowHelp(true)
+	l.Title = ""
+	l.SetShowHelp(false) // We'll use our own help bar
+	l.SetShowTitle(false)
 
 	return TodosListModel{
 		list:             l,
@@ -76,6 +81,8 @@ func NewTodosListModel(store *sqlite.Store) TodosListModel {
 		titleInput:       components.NewTextInput("Todo title"),
 		descInput:        components.NewTextArea("Description (optional)"),
 		filter:           "",
+		header:           components.NewHeader("✅", "Todos"),
+		helpBar:          components.NewHelpBar(components.TodosListHints),
 	}
 }
 
@@ -86,7 +93,11 @@ func (m *TodosListModel) Init() tea.Cmd {
 
 // SetSize updates the list dimensions.
 func (m *TodosListModel) SetSize(width, height int) {
-	m.list.SetSize(width-4, height-10)
+	m.width = width
+	m.height = height
+	m.list.SetSize(width-4, height-14) // Account for header and help bar
+	m.header.SetWidth(width - 4)
+	m.helpBar.SetWidth(width - 4)
 }
 
 // GetSelectedTodo returns the currently selected todo, or nil if none selected.
@@ -297,27 +308,28 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the todos screen.
 //
-// Phase 2: Todos
+// Phase 4: UX Overhaul
+//   - Header with title and item count
+//   - Context-sensitive help bar
 //   - Shows create/edit form when active
-//   - Shows todo list otherwise
 func (m *TodosListModel) View() string {
 	// Delete confirmation dialog
 	if m.confirmingDelete {
+		m.helpBar.SetHints(components.ConfirmHints)
 		confirmDialog := lipgloss.JoinVertical(
 			lipgloss.Center,
 			styles.TitleStyle.Render("⚠️ Delete Todo?"),
 			"",
 			styles.SubtitleStyle.Render("This action cannot be undone."),
 			"",
-			styles.HelpStyle.Render(
-				styles.KeyHint("y", "Yes, delete")+" • "+
-					styles.KeyHint("n", "No, cancel"),
-			),
+			m.helpBar.View(),
 		)
 		return styles.PanelStyle.Render(confirmDialog)
 	}
 
 	if m.showCreate {
+		m.helpBar.SetHints(components.TodosEditHints)
+
 		// Show which field is focused
 		titleLabel := styles.SubtitleStyle.Render("Title")
 		descLabel := styles.SubtitleStyle.Render("Description")
@@ -343,31 +355,40 @@ func (m *TodosListModel) View() string {
 			descLabel,
 			m.descInput.View(),
 			"",
-			styles.HelpStyle.Render(
-				styles.KeyHint("Tab", "Switch field")+" • "+
-					styles.KeyHint("Ctrl+S", "Save")+" • "+
-					styles.KeyHint("Esc", "Cancel"),
-			),
+			m.helpBar.View(),
 		)
 		return styles.PanelStyle.Render(form)
 	}
 
+	// Update header with item count
+	m.header.SetItemCount(len(m.list.Items()))
+	m.helpBar.SetHints(components.TodosListHints)
+
 	// Empty state
 	if len(m.list.Items()) == 0 {
 		emptyState := lipgloss.JoinVertical(
-			lipgloss.Center,
-			styles.TitleStyle.Render("✅ Todos"),
+			lipgloss.Left,
+			m.header.View(),
 			"",
 			styles.SubtitleStyle.Render("No todos yet. Add something to get done!"),
 			"",
-			styles.HelpStyle.Render(
-				styles.KeyHint("c", "Create your first todo"),
-			),
+			styles.HelpStyle.Render("Press [c] to create your first todo"),
+			"",
+			m.helpBar.View(),
 		)
 		return styles.PanelStyle.Render(emptyState)
 	}
 
-	return m.list.View()
+	// Regular list view with header and help bar
+	content := lipgloss.JoinVertical(
+		lipgloss.Left,
+		m.header.View(),
+		"",
+		m.list.View(),
+		"",
+		m.helpBar.View(),
+	)
+	return content
 }
 
 // TodoItem implements list.Item for displaying todos in the list.
