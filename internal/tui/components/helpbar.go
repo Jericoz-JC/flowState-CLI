@@ -191,4 +191,27 @@ var (
 		{Key: "Enter", Description: "Confirm", Primary: true},
 		{Key: "Esc", Description: "Cancel"},
 	}
+
+	// SearchInputHints are the hints for the semantic search screen (query entry).
+	SearchInputHints = []HelpHint{
+		{Key: "Enter", Description: "Search", Primary: true},
+		{Key: "Ctrl+H", Description: "Home"},
+		{Key: "Esc", Description: "Back"},
+	}
+
+	// SearchResultsHints are the hints for the semantic search screen (results navigation).
+	SearchResultsHints = []HelpHint{
+		{Key: "j/k", Description: "Navigate"},
+		{Key: "Enter", Description: "Open Note", Primary: true},
+		{Key: "Esc", Description: "Edit Query"},
+		{Key: "Ctrl+H", Description: "Home"},
+	}
+
+	// MindMapHints are the hints for the mind map screen.
+	MindMapHints = []HelpHint{
+		{Key: "h/j/k/l", Description: "Move"},
+		{Key: "+/-", Description: "Zoom"},
+		{Key: "Enter", Description: "Open Note", Primary: true},
+		{Key: "Ctrl+H", Description: "Home"},
+	}
 )

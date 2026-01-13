@@ -23,10 +23,14 @@
 package embedder
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"math"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"flowState-cli/internal/config"
 )
@@ -45,6 +49,7 @@ import (
 //   - Enables semantic similarity search
 type Embedder struct {
 	modelPath string
+	http      *http.Client
 }
 
 // New creates a new Embedder instance.
@@ -53,6 +58,15 @@ type Embedder struct {
 //   - Ready for model file storage
 //   - Future: Download ONNX model automatically
 func New(cfg *config.Config) (*Embedder, error) {
+	return NewWithHTTPClient(cfg, http.DefaultClient)
+}
+
+// NewWithHTTPClient is primarily used for testing download behavior.
+func NewWithHTTPClient(cfg *config.Config, client *http.Client) (*Embedder, error) {
+	if client == nil {
+		client = http.DefaultClient
+	}
+
 	modelPath := filepath.Join(cfg.ModelPath, "all-MiniLM-L6-v2")
 
 	if err := os.MkdirAll(modelPath, 0755); err != nil {
@@ -61,6 +75,7 @@ func New(cfg *config.Config) (*Embedder, error) {
 
 	return &Embedder{
 		modelPath: modelPath,
+		http:      client,
 	}, nil
 }
 
@@ -142,6 +157,74 @@ func (e *Embedder) GetModelInfo() ModelInfo {
 		DownloadURL: "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2-onnx",
 		ModelSize:   "90MB",
 	}
+}
+
+// ModelFilePath returns the expected path of the ONNX model file.
+func (e *Embedder) ModelFilePath() string {
+	return filepath.Join(e.modelPath, "model.onnx")
+}
+
+// EnsureModel downloads the ONNX model if it's missing.
+//
+// downloadURL can be either:
+// - a direct file URL to model.onnx, or
+// - a HuggingFace repo URL, in which case we append /resolve/main/model.onnx
+func (e *Embedder) EnsureModel(ctx context.Context, downloadURL string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	modelPath := e.ModelFilePath()
+	if _, err := os.Stat(modelPath); err == nil {
+		return nil
+	}
+
+	if strings.TrimSpace(downloadURL) == "" {
+		downloadURL = e.GetModelInfo().DownloadURL
+	}
+
+	url := strings.TrimRight(downloadURL, "/")
+	if !strings.Contains(url, "resolve/") && !strings.HasSuffix(strings.ToLower(url), ".onnx") {
+		url = url + "/resolve/main/model.onnx"
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to build model download request: %w", err)
+	}
+
+	resp, err := e.http.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to download model: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("model download failed: status=%s", resp.Status)
+	}
+
+	tmpPath := modelPath + ".tmp"
+	f, err := os.Create(tmpPath)
+	if err != nil {
+		return fmt.Errorf("failed to create temp model file: %w", err)
+	}
+
+	if _, err := io.Copy(f, resp.Body); err != nil {
+		f.Close()
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("failed to write model: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("failed to close model file: %w", err)
+	}
+
+	if err := os.Rename(tmpPath, modelPath); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("failed to finalize model file: %w", err)
+	}
+
+	return nil
 }
 
 // IsModelLoaded always returns true for current implementation.

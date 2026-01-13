@@ -28,8 +28,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"flowState-cli/internal/config"
+	embeddings "flowState-cli/internal/embeddings"
 	"flowState-cli/internal/search"
-	"flowState-cli/internal/storage/qdrant"
 	"flowState-cli/internal/storage/sqlite"
 	"flowState-cli/internal/tui/keymap"
 	"flowState-cli/internal/tui/screens"
@@ -52,6 +52,7 @@ const (
 	ScreenTodos
 	ScreenFocus
 	ScreenSearch
+	ScreenMindMap
 )
 
 // Model is the main application model.
@@ -81,13 +82,16 @@ type Model struct {
 	currentScreen      Screen
 	config             *config.Config
 	store              *sqlite.Store
-	vectorStore        *qdrant.VectorStore
+	embedder           *embeddings.Embedder
 	semantic           *search.SemanticSearch
 	notesScreen        *screens.NotesListModel
 	todosScreen        *screens.TodosListModel
 	focusScreen        *screens.FocusModel
+	searchScreen       *screens.SearchModel
+	mindMapScreen      *screens.MindMapModel
 	linkScreen         *screens.LinkModel
 	quickCaptureScreen *screens.QuickCaptureModel
+	showHelpModal      bool
 	status             string
 	lastUpdate         time.Time
 }
@@ -105,27 +109,37 @@ func New(cfg *config.Config) (*Model, error) {
 		return nil, fmt.Errorf("failed to open store: %w", err)
 	}
 
-	vectorStore, err := qdrant.New(cfg)
+	embedder, err := embeddings.New(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create vector store: %w", err)
+		return nil, fmt.Errorf("failed to create embedder: %w", err)
 	}
+
+	semantic := search.New(embedder, store)
+	// Best-effort initial indexing (can be re-run later).
+	_ = semantic.IndexAllNotes()
 
 	notesScreen := screens.NewNotesListModel(store)
 	todosScreen := screens.NewTodosListModel(store)
 	focusScreen := screens.NewFocusModel(store)
 	linkScreen := screens.NewLinkModel(store)
 	quickCaptureScreen := screens.NewQuickCaptureModel(store)
+	searchScreen := screens.NewSearchModel(store, semantic)
+	mindMapScreen := screens.NewMindMapModel(store)
 
 	return &Model{
 		currentScreen:      ScreenHome,
 		config:             cfg,
 		store:              store,
-		vectorStore:        vectorStore,
+		embedder:           embedder,
+		semantic:           semantic,
 		notesScreen:        &notesScreen,
 		todosScreen:        &todosScreen,
 		focusScreen:        &focusScreen,
+		searchScreen:       &searchScreen,
+		mindMapScreen:      &mindMapScreen,
 		linkScreen:         &linkScreen,
 		quickCaptureScreen: &quickCaptureScreen,
+		showHelpModal:      false,
 		status:             "Ready",
 		lastUpdate:         time.Now(),
 	}, nil
@@ -154,6 +168,12 @@ func (m *Model) SetSize(width, height int) {
 	if m.focusScreen != nil {
 		m.focusScreen.SetSize(width, height)
 	}
+	if m.searchScreen != nil {
+		m.searchScreen.SetSize(width, height)
+	}
+	if m.mindMapScreen != nil {
+		m.mindMapScreen.SetSize(width, height)
+	}
 }
 
 // Update handles incoming messages and updates the model.
@@ -165,6 +185,19 @@ func (m *Model) SetSize(width, height int) {
 // Phase 2: Notes & Todos
 //   - Delegates to notesScreen or todosScreen when active
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Help modal has highest priority when open.
+	if m.showHelpModal {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "?", "esc", "q":
+				m.showHelpModal = false
+				return m, nil
+			}
+		}
+		return m, nil
+	}
+
 	// Handle quick capture modal if open
 	if m.quickCaptureScreen != nil && m.quickCaptureScreen.IsOpen() {
 		switch msg := msg.(type) {
@@ -193,10 +226,22 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case screens.OpenNoteMsg:
+		// Open the note from search results by navigating to Notes and selecting it.
+		m.currentScreen = ScreenNotes
+		m.status = "Notes"
+		if m.notesScreen != nil {
+			_ = m.notesScreen.LoadNotes()
+			m.notesScreen.SelectNoteByID(msg.NoteID)
+		}
+		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
+		case "?":
+			m.showHelpModal = true
+			return m, nil
 		}
 		
 		// Use cross-platform key bindings
@@ -217,6 +262,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else if keymap.IsModSlash(msg) {
 			m.currentScreen = ScreenSearch
 			m.status = "Search"
+		} else if keymap.IsModG(msg) {
+			m.currentScreen = ScreenMindMap
+			m.status = "Mind Map"
+			if m.mindMapScreen != nil {
+				_ = m.mindMapScreen.LoadGraph()
+			}
 		} else if keymap.IsModH(msg) {
 			m.currentScreen = ScreenHome
 			m.status = "Home"
@@ -257,6 +308,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.focusScreen = &updatedFocus
 			return m, cmd
 		}
+	case ScreenSearch:
+		if m.searchScreen != nil {
+			updatedSearch, cmd := m.searchScreen.Update(msg)
+			m.searchScreen = &updatedSearch
+			return m, cmd
+		}
+	case ScreenMindMap:
+		if m.mindMapScreen != nil {
+			updatedMM, cmd := m.mindMapScreen.Update(msg)
+			m.mindMapScreen = &updatedMM
+			return m, cmd
+		}
 	}
 
 	return m, nil
@@ -292,7 +355,17 @@ func (m *Model) View() string {
 			content = m.focusView()
 		}
 	case ScreenSearch:
-		content = m.searchView()
+		if m.searchScreen != nil {
+			content = m.searchScreen.View()
+		} else {
+			content = "Search unavailable"
+		}
+	case ScreenMindMap:
+		if m.mindMapScreen != nil {
+			content = m.mindMapScreen.View()
+		} else {
+			content = "Mind map unavailable"
+		}
 	default:
 		content = m.homeView()
 	}
@@ -307,11 +380,16 @@ func (m *Model) View() string {
 		content = m.quickCaptureScreen.View()
 	}
 
+	// Overlay help modal last (highest priority)
+	if m.showHelpModal {
+		content = m.helpModalView()
+	}
+
 	// Build status bar with platform-appropriate shortcuts
 	mod := keymap.ModKeyDisplay()
 	statusBar := styles.StatusBarStyle.Render(
-		fmt.Sprintf(" %s | [%s+X] Capture [%s+N] Notes [%s+T] Todos [%s+L] Link [%s+H] Home [q] Quit ", 
-			m.status, mod, mod, mod, mod, mod),
+		fmt.Sprintf(" %s | [%s+X] Capture [%s+N] Notes [%s+T] Todos [%s+G] Map [%s+L] Link [%s+H] Home [q] Quit ",
+			m.status, mod, mod, mod, mod, mod, mod),
 	)
 
 	return lipgloss.JoinVertical(
@@ -320,6 +398,37 @@ func (m *Model) View() string {
 		"",
 		statusBar,
 	)
+}
+
+func (m *Model) helpModalView() string {
+	mod := keymap.ModKeyDisplay()
+	box := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("#313244")).
+		Padding(1, 2).
+		Width(52)
+
+	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#22D3EE")).Render("Keyboard Shortcuts")
+	lines := []string{
+		title,
+		"",
+		fmt.Sprintf("%s+X  Quick Capture", mod),
+		fmt.Sprintf("%s+N  Notes", mod),
+		fmt.Sprintf("%s+T  Todos", mod),
+		fmt.Sprintf("%s+F  Focus", mod),
+		fmt.Sprintf("%s+/  Search", mod),
+		fmt.Sprintf("%s+G  Mind Map", mod),
+		fmt.Sprintf("%s+L  Links", mod),
+		fmt.Sprintf("%s+H  Home", mod),
+		"",
+		"q     Quit",
+		"?     Toggle this help",
+		"",
+		"Press Esc or ? to close",
+	}
+	content := box.Render(lipgloss.JoinVertical(lipgloss.Left, lines...))
+
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
 }
 
 // homeView renders the home screen.
@@ -437,9 +546,6 @@ func (m *Model) Init() tea.Cmd {
 func (m *Model) Close() error {
 	if m.store != nil {
 		m.store.Close()
-	}
-	if m.vectorStore != nil {
-		m.vectorStore.Close()
 	}
 	return nil
 }
