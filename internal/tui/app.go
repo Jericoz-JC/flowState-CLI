@@ -64,6 +64,10 @@ const (
 // Phase 2: Notes & Todos
 //   - Notes and todos screens are initialized
 //   - Screen-specific updates delegated to screen models
+//
+// Phase 3: Linking System
+//   - linkScreen: Modal for creating/viewing links
+//   - Ctrl+L opens link modal for selected item
 type Model struct {
 	width         int
 	height        int
@@ -74,6 +78,7 @@ type Model struct {
 	semantic      *search.SemanticSearch
 	notesScreen   *screens.NotesListModel
 	todosScreen   *screens.TodosListModel
+	linkScreen    *screens.LinkModel
 	status        string
 	lastUpdate    time.Time
 }
@@ -98,6 +103,7 @@ func New(cfg *config.Config) (*Model, error) {
 
 	notesScreen := screens.NewNotesListModel(store)
 	todosScreen := screens.NewTodosListModel(store)
+	linkScreen := screens.NewLinkModel(store)
 
 	return &Model{
 		currentScreen: ScreenHome,
@@ -106,6 +112,7 @@ func New(cfg *config.Config) (*Model, error) {
 		vectorStore:   vectorStore,
 		notesScreen:   &notesScreen,
 		todosScreen:   &todosScreen,
+		linkScreen:    &linkScreen,
 		status:        "Ready",
 		lastUpdate:    time.Now(),
 	}, nil
@@ -125,6 +132,9 @@ func (m *Model) SetSize(width, height int) {
 	if m.todosScreen != nil {
 		m.todosScreen.SetSize(width, height)
 	}
+	if m.linkScreen != nil {
+		m.linkScreen.SetSize(width, height)
+	}
 }
 
 // Update handles incoming messages and updates the model.
@@ -136,6 +146,16 @@ func (m *Model) SetSize(width, height int) {
 // Phase 2: Notes & Todos
 //   - Delegates to notesScreen or todosScreen when active
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Handle link modal if open
+	if m.linkScreen != nil && m.linkScreen.IsOpen() {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			updatedLink, cmd := m.linkScreen.Update(msg)
+			m.linkScreen = &updatedLink
+			return m, cmd
+		}
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -158,6 +178,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+h":
 			m.currentScreen = ScreenHome
 			m.status = "Home"
+		case "ctrl+l":
+			// Open link modal for currently selected item
+			if m.currentScreen == ScreenNotes && m.notesScreen != nil {
+				if selected := m.notesScreen.GetSelectedNote(); selected != nil {
+					m.linkScreen.Open("note", selected.ID, selected.Title)
+					m.status = "Links"
+				}
+			} else if m.currentScreen == ScreenTodos && m.todosScreen != nil {
+				if selected := m.todosScreen.GetSelectedTodo(); selected != nil {
+					m.linkScreen.Open("todo", selected.ID, selected.Title)
+					m.status = "Links"
+				}
+			}
 		}
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)
@@ -206,8 +239,13 @@ func (m *Model) View() string {
 		content = m.homeView()
 	}
 
+	// Overlay link modal if open
+	if m.linkScreen != nil && m.linkScreen.IsOpen() {
+		content = m.linkScreen.View()
+	}
+
 	statusBar := styles.StatusBarStyle.Render(
-		fmt.Sprintf(" %s | [Ctrl+N] Notes [Ctrl+T] Todos [Ctrl+F] Focus [Ctrl+/] Search [Ctrl+H] Home [q] Quit ", m.status),
+		fmt.Sprintf(" %s | [Ctrl+N] Notes [Ctrl+T] Todos [Ctrl+F] Focus [Ctrl+L] Link [Ctrl+H] Home [q] Quit ", m.status),
 	)
 
 	return lipgloss.JoinVertical(

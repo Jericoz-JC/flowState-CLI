@@ -87,6 +87,17 @@ func (m *NotesListModel) SetSize(width, height int) {
 	m.list.SetSize(width-4, height-10)
 }
 
+// GetSelectedNote returns the currently selected note, or nil if none selected.
+func (m *NotesListModel) GetSelectedNote() *models.Note {
+	if len(m.list.Items()) == 0 {
+		return nil
+	}
+	if selected, ok := m.list.SelectedItem().(NoteItem); ok {
+		return &selected.note
+	}
+	return nil
+}
+
 // LoadNotes refreshes the note list from the database.
 func (m *NotesListModel) LoadNotes() error {
 	notes, err := m.store.ListNotes()
