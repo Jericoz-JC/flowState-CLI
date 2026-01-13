@@ -44,12 +44,15 @@ import (
 //   - enter: Save and return to list
 //   - esc: Cancel and return to list
 type NotesListModel struct {
-	list       list.Model
-	store      *sqlite.Store
-	filter     string
-	showCreate bool
-	titleInput components.TextInputModel
-	bodyInput  components.TextAreaModel
+	list             list.Model
+	store            *sqlite.Store
+	filter           string
+	showCreate       bool
+	editingID        int64 // 0 = creating new, >0 = editing existing
+	confirmingDelete bool
+	deleteTargetID   int64
+	titleInput       components.TextInputModel
+	bodyInput        components.TextAreaModel
 }
 
 // NewNotesListModel creates a new notes list screen.
@@ -62,12 +65,15 @@ func NewNotesListModel(store *sqlite.Store) NotesListModel {
 	l.SetShowHelp(true)
 
 	return NotesListModel{
-		list:       l,
-		store:      store,
-		filter:     "",
-		showCreate: false,
-		titleInput: components.NewTextInput("Note title"),
-		bodyInput:  components.NewTextArea("Note body"),
+		list:             l,
+		store:            store,
+		filter:           "",
+		showCreate:       false,
+		editingID:        0,
+		confirmingDelete: false,
+		deleteTargetID:   0,
+		titleInput:       components.NewTextInput("Note title"),
+		bodyInput:        components.NewTextArea("Note body"),
 	}
 }
 
@@ -109,6 +115,23 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Handle delete confirmation dialog
+		if m.confirmingDelete {
+			switch msg.String() {
+			case "y", "Y":
+				m.store.DeleteNote(m.deleteTargetID)
+				m.confirmingDelete = false
+				m.deleteTargetID = 0
+				m.LoadNotes()
+				return m, nil
+			case "n", "N", "esc":
+				m.confirmingDelete = false
+				m.deleteTargetID = 0
+				return m, nil
+			}
+			return m, nil
+		}
+
 		// Handle keys when in create/edit mode
 		if m.showCreate {
 			switch msg.String() {
@@ -128,15 +151,30 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					title := strings.TrimSpace(m.titleInput.Value())
 					body := strings.TrimSpace(m.bodyInput.Value())
 					if title != "" {
-						note := &models.Note{
-							Title: title,
-							Body:  body,
-							Tags:  extractTags(body),
-						}
-						if err := m.store.CreateNote(note); err != nil {
-							return m, nil
+						if m.editingID > 0 {
+							// Update existing note
+							note := &models.Note{
+								ID:    m.editingID,
+								Title: title,
+								Body:  body,
+								Tags:  extractTags(body),
+							}
+							if err := m.store.UpdateNote(note); err != nil {
+								return m, nil
+							}
+						} else {
+							// Create new note
+							note := &models.Note{
+								Title: title,
+								Body:  body,
+								Tags:  extractTags(body),
+							}
+							if err := m.store.CreateNote(note); err != nil {
+								return m, nil
+							}
 						}
 						m.showCreate = false
+						m.editingID = 0
 						m.titleInput.SetValue("")
 						m.bodyInput.SetValue("")
 						m.LoadNotes()
@@ -148,15 +186,30 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				title := strings.TrimSpace(m.titleInput.Value())
 				body := strings.TrimSpace(m.bodyInput.Value())
 				if title != "" {
-					note := &models.Note{
-						Title: title,
-						Body:  body,
-						Tags:  extractTags(body),
-					}
-					if err := m.store.CreateNote(note); err != nil {
-						return m, nil
+					if m.editingID > 0 {
+						// Update existing note
+						note := &models.Note{
+							ID:    m.editingID,
+							Title: title,
+							Body:  body,
+							Tags:  extractTags(body),
+						}
+						if err := m.store.UpdateNote(note); err != nil {
+							return m, nil
+						}
+					} else {
+						// Create new note
+						note := &models.Note{
+							Title: title,
+							Body:  body,
+							Tags:  extractTags(body),
+						}
+						if err := m.store.CreateNote(note); err != nil {
+							return m, nil
+						}
 					}
 					m.showCreate = false
+					m.editingID = 0
 					m.titleInput.SetValue("")
 					m.bodyInput.SetValue("")
 					m.LoadNotes()
@@ -164,6 +217,7 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case "esc":
 				m.showCreate = false
+				m.editingID = 0
 				m.titleInput.SetValue("")
 				m.bodyInput.SetValue("")
 				return m, nil
@@ -190,6 +244,7 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.list.VisibleItems()) > 0 {
 				if selected, ok := m.list.SelectedItem().(NoteItem); ok {
 					m.showCreate = true
+					m.editingID = selected.note.ID
 					m.titleInput.SetValue(selected.note.Title)
 					m.bodyInput.SetValue(selected.note.Body)
 					m.titleInput.Focus()
@@ -198,9 +253,8 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d":
 			if len(m.list.VisibleItems()) > 0 {
 				if selected, ok := m.list.SelectedItem().(NoteItem); ok {
-					// TODO: Add confirmation dialog
-					m.store.DeleteNote(selected.note.ID)
-					m.LoadNotes()
+					m.confirmingDelete = true
+					m.deleteTargetID = selected.note.ID
 				}
 			}
 		}
@@ -219,6 +273,22 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 //   - Shows create/edit form when active
 //   - Shows note list otherwise
 func (m *NotesListModel) View() string {
+	// Delete confirmation dialog
+	if m.confirmingDelete {
+		confirmDialog := lipgloss.JoinVertical(
+			lipgloss.Center,
+			styles.TitleStyle.Render("⚠️ Delete Note?"),
+			"",
+			styles.SubtitleStyle.Render("This action cannot be undone."),
+			"",
+			styles.HelpStyle.Render(
+				styles.KeyHint("y", "Yes, delete")+" • "+
+					styles.KeyHint("n", "No, cancel"),
+			),
+		)
+		return styles.PanelStyle.Render(confirmDialog)
+	}
+
 	if m.showCreate {
 		// Show which field is focused
 		titleLabel := styles.SubtitleStyle.Render("Title")
@@ -229,9 +299,15 @@ func (m *NotesListModel) View() string {
 			bodyLabel = styles.SelectedItemStyle.Render("▶ Body")
 		}
 
+		// Dynamic title for create vs edit
+		formTitle := "📝 Create Note"
+		if m.editingID > 0 {
+			formTitle = "📝 Edit Note"
+		}
+
 		form := lipgloss.JoinVertical(
 			lipgloss.Left,
-			styles.TitleStyle.Render("📝 Create Note"),
+			styles.TitleStyle.Render(formTitle),
 			"",
 			titleLabel,
 			m.titleInput.View(),
@@ -246,6 +322,21 @@ func (m *NotesListModel) View() string {
 			),
 		)
 		return styles.PanelStyle.Render(form)
+	}
+
+	// Empty state
+	if len(m.list.Items()) == 0 {
+		emptyState := lipgloss.JoinVertical(
+			lipgloss.Center,
+			styles.TitleStyle.Render("📝 Notes"),
+			"",
+			styles.SubtitleStyle.Render("No notes yet. Start capturing your thoughts!"),
+			"",
+			styles.HelpStyle.Render(
+				styles.KeyHint("c", "Create your first note"),
+			),
+		)
+		return styles.PanelStyle.Render(emptyState)
 	}
 
 	return m.list.View()

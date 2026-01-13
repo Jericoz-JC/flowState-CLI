@@ -69,17 +69,28 @@ On first run, the application will:
 
 ### Keyboard Shortcuts
 
+#### Global Navigation
 | Key | Action |
 |-----|--------|
 | `Ctrl+N` | Notes screen |
 | `Ctrl+T` | Todos screen |
 | `Ctrl+F` | Focus session screen |
-| `Ctrl+S` | Search |
-| `Ctrl+L` | Create link |
-| `Ctrl+X` | Quick capture note |
-| `Ctrl+H` | Show help |
+| `Ctrl+/` | Semantic search |
+| `Ctrl+H` | Home screen / Help |
 | `Esc` | Go back / Cancel |
-| `q` | Quit |
+| `q` | Quit application |
+
+#### Notes & Todos Screens
+| Key | Action |
+|-----|--------|
+| `c` | Create new item |
+| `e` | Edit selected item |
+| `d` | Delete selected item (with confirmation) |
+| `Space` | Toggle todo completion |
+| `Tab` | Switch between form fields |
+| `Ctrl+S` | Save item |
+| `j/↓` | Move selection down |
+| `k/↑` | Move selection up |
 
 ## Project Structure
 

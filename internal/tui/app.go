@@ -12,11 +12,11 @@
 //   - Screen-specific keyboard handlers
 //
 // Navigation Keys:
-//   - n: Notes screen
-//   - t: Todos screen
-//   - f: Focus sessions
-//   - s: Semantic search
-//   - h: Home screen
+//   - Ctrl+N: Notes screen
+//   - Ctrl+T: Todos screen
+//   - Ctrl+F: Focus sessions
+//   - Ctrl+S: Semantic search
+//   - Ctrl+H: Home screen / Help
 //   - q: Quit application
 package app
 
@@ -141,21 +141,21 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
-		case "n":
+		case "ctrl+n":
 			m.currentScreen = ScreenNotes
 			m.status = "Notes"
 			m.notesScreen.LoadNotes()
-		case "t":
+		case "ctrl+t":
 			m.currentScreen = ScreenTodos
 			m.status = "Todos"
 			m.todosScreen.LoadTodos()
-		case "f":
+		case "ctrl+f":
 			m.currentScreen = ScreenFocus
 			m.status = "Focus"
-		case "s":
+		case "ctrl+/":
 			m.currentScreen = ScreenSearch
 			m.status = "Search"
-		case "h":
+		case "ctrl+h":
 			m.currentScreen = ScreenHome
 			m.status = "Home"
 		}
@@ -207,7 +207,7 @@ func (m *Model) View() string {
 	}
 
 	statusBar := styles.StatusBarStyle.Render(
-		fmt.Sprintf(" %s | [n] Notes [t] Todos [f] Focus [s] Search [h] Home [q] Quit ", m.status),
+		fmt.Sprintf(" %s | [Ctrl+N] Notes [Ctrl+T] Todos [Ctrl+F] Focus [Ctrl+/] Search [Ctrl+H] Home [q] Quit ", m.status),
 	)
 
 	return lipgloss.JoinVertical(
@@ -235,15 +235,15 @@ func (m *Model) homeView() string {
 	menuItems := lipgloss.JoinVertical(
 		lipgloss.Left,
 		"",
-		styles.MenuItemStyle.Render(styles.KeyHint("n", "Notes")+"       - Capture and organize your thoughts"),
-		styles.MenuItemStyle.Render(styles.KeyHint("t", "Todos")+"       - Track your tasks and priorities"),
-		styles.MenuItemStyle.Render(styles.KeyHint("f", "Focus")+"       - Pomodoro timer for deep work"),
-		styles.MenuItemStyle.Render(styles.KeyHint("s", "Search")+"      - Find anything with semantic search"),
+		styles.MenuItemStyle.Render(styles.KeyHint("Ctrl+N", "Notes")+"   - Capture and organize your thoughts"),
+		styles.MenuItemStyle.Render(styles.KeyHint("Ctrl+T", "Todos")+"   - Track your tasks and priorities"),
+		styles.MenuItemStyle.Render(styles.KeyHint("Ctrl+F", "Focus")+"   - Pomodoro timer for deep work"),
+		styles.MenuItemStyle.Render(styles.KeyHint("Ctrl+/", "Search")+"  - Find anything with semantic search"),
 		"",
 	)
 
 	// Quick tips
-	tips := styles.HelpStyle.Render("Press " + styles.KeyStyle.Render("q") + " to quit • " + styles.KeyStyle.Render("?") + " for help")
+	tips := styles.HelpStyle.Render("Press " + styles.KeyStyle.Render("q") + " to quit • " + styles.KeyStyle.Render("Ctrl+H") + " for help")
 
 	return lipgloss.JoinVertical(
 		lipgloss.Center,
@@ -272,7 +272,7 @@ func (m *Model) focusView() string {
 		"",
 		styles.HelpStyle.Render("This feature is coming soon!"),
 		"",
-		styles.MenuItemStyle.Render(styles.KeyHint("h", "Return to Home")),
+		styles.MenuItemStyle.Render(styles.KeyHint("Ctrl+H", "Return to Home")),
 	)
 
 	content := lipgloss.JoinVertical(
@@ -303,7 +303,7 @@ func (m *Model) searchView() string {
 		"",
 		styles.HelpStyle.Render("This feature is coming soon!"),
 		"",
-		styles.MenuItemStyle.Render(styles.KeyHint("h", "Return to Home")),
+		styles.MenuItemStyle.Render(styles.KeyHint("Ctrl+H", "Return to Home")),
 	)
 
 	content := lipgloss.JoinVertical(
