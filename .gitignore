@@ -11,6 +11,10 @@
 # Output of go coverage
 *.out
 
+# Logs
+*.log
+debug.log
+
 # Go workspace
 go.work
 go.work.sum
