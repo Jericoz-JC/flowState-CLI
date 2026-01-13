@@ -44,3 +44,6 @@ config.yaml
 .env
 .env.*
 *.env
+
+# GoReleaser build output
+dist/
