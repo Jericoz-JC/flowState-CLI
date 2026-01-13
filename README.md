@@ -95,14 +95,35 @@ flowchart TD
 
 ### Installation
 
-#### Option A (recommended): Download a prebuilt binary (no Go required)
+#### Option A: npm (recommended)
 
-- Go to GitHub Releases and download the archive for your OS/CPU
-- Extract it and run:
-  - macOS/Linux: `./flowstate`
-  - Windows: `.\flowstate.exe`
+```bash
+npm install -g flowstate-cli
+flowstate
+```
 
-#### Option B: Build from source (requires Go)
+#### Option B: Download binary
+
+Download from [GitHub Releases](https://github.com/Jericoz-JC/flowState-CLI/releases/latest):
+
+| Platform | File |
+|----------|------|
+| Windows | `flowstate-windows-amd64.zip` |
+| macOS (Intel) | `flowstate-darwin-amd64.tar.gz` |
+| macOS (Apple Silicon) | `flowstate-darwin-arm64.tar.gz` |
+| Linux | `flowstate-linux-amd64.tar.gz` |
+
+Extract and run:
+- macOS/Linux: `./flowstate`
+- Windows: `.\flowstate.exe`
+
+#### Option C: Go install
+
+```bash
+go install github.com/Jericoz-JC/flowState-CLI/cmd/flowState@latest
+```
+
+#### Option D: Build from source
 
 ```bash
 git clone https://github.com/Jericoz-JC/flowState-CLI
