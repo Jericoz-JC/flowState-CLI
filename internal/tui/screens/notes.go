@@ -53,6 +53,10 @@ type NotesListModel struct {
 	deleteTargetID   int64
 	titleInput       components.TextInputModel
 	bodyInput        components.TextAreaModel
+	header           components.Header
+	helpBar          components.HelpBar
+	width            int
+	height           int
 }
 
 // NewNotesListModel creates a new notes list screen.
@@ -61,8 +65,9 @@ func NewNotesListModel(store *sqlite.Store) NotesListModel {
 	delegate := list.NewDefaultDelegate()
 
 	l := list.New(items, delegate, 0, 0)
-	l.Title = "Notes"
-	l.SetShowHelp(true)
+	l.Title = ""
+	l.SetShowHelp(false) // We'll use our own help bar
+	l.SetShowTitle(false)
 
 	return NotesListModel{
 		list:             l,
@@ -74,6 +79,8 @@ func NewNotesListModel(store *sqlite.Store) NotesListModel {
 		deleteTargetID:   0,
 		titleInput:       components.NewTextInput("Note title"),
 		bodyInput:        components.NewTextArea("Note body"),
+		header:           components.NewHeader("📝", "Notes"),
+		helpBar:          components.NewHelpBar(components.NotesListHints),
 	}
 }
 
@@ -84,7 +91,11 @@ func (m *NotesListModel) Init() tea.Cmd {
 
 // SetSize updates the list dimensions.
 func (m *NotesListModel) SetSize(width, height int) {
-	m.list.SetSize(width-4, height-10)
+	m.width = width
+	m.height = height
+	m.list.SetSize(width-4, height-14) // Account for header and help bar
+	m.header.SetWidth(width - 4)
+	m.helpBar.SetWidth(width - 4)
 }
 
 // GetSelectedNote returns the currently selected note, or nil if none selected.
@@ -280,34 +291,35 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the notes screen.
 //
-// Phase 2: Notes
+// Phase 4: UX Overhaul
+//   - Header with title and item count
+//   - Context-sensitive help bar
 //   - Shows create/edit form when active
-//   - Shows note list otherwise
 func (m *NotesListModel) View() string {
 	// Delete confirmation dialog
 	if m.confirmingDelete {
+		m.helpBar.SetHints(components.ConfirmHints)
 		confirmDialog := lipgloss.JoinVertical(
 			lipgloss.Center,
 			styles.TitleStyle.Render("⚠️ Delete Note?"),
 			"",
 			styles.SubtitleStyle.Render("This action cannot be undone."),
 			"",
-			styles.HelpStyle.Render(
-				styles.KeyHint("y", "Yes, delete")+" • "+
-					styles.KeyHint("n", "No, cancel"),
-			),
+			m.helpBar.View(),
 		)
 		return styles.PanelStyle.Render(confirmDialog)
 	}
 
 	if m.showCreate {
+		m.helpBar.SetHints(components.NotesEditHints)
+
 		// Show which field is focused
 		titleLabel := styles.SubtitleStyle.Render("Title")
-		bodyLabel := styles.SubtitleStyle.Render("Body")
+		bodyLabel := styles.SubtitleStyle.Render("Body (use #tags and [[links]])")
 		if m.titleInput.Focused() {
 			titleLabel = styles.SelectedItemStyle.Render("▶ Title")
 		} else {
-			bodyLabel = styles.SelectedItemStyle.Render("▶ Body")
+			bodyLabel = styles.SelectedItemStyle.Render("▶ Body (use #tags and [[links]])")
 		}
 
 		// Dynamic title for create vs edit
@@ -326,31 +338,40 @@ func (m *NotesListModel) View() string {
 			bodyLabel,
 			m.bodyInput.View(),
 			"",
-			styles.HelpStyle.Render(
-				styles.KeyHint("Tab", "Switch field")+" • "+
-					styles.KeyHint("Ctrl+S", "Save")+" • "+
-					styles.KeyHint("Esc", "Cancel"),
-			),
+			m.helpBar.View(),
 		)
 		return styles.PanelStyle.Render(form)
 	}
 
+	// Update header with item count
+	m.header.SetItemCount(len(m.list.Items()))
+	m.helpBar.SetHints(components.NotesListHints)
+
 	// Empty state
 	if len(m.list.Items()) == 0 {
 		emptyState := lipgloss.JoinVertical(
-			lipgloss.Center,
-			styles.TitleStyle.Render("📝 Notes"),
+			lipgloss.Left,
+			m.header.View(),
 			"",
 			styles.SubtitleStyle.Render("No notes yet. Start capturing your thoughts!"),
 			"",
-			styles.HelpStyle.Render(
-				styles.KeyHint("c", "Create your first note"),
-			),
+			styles.HelpStyle.Render("Press [c] to create your first note"),
+			"",
+			m.helpBar.View(),
 		)
 		return styles.PanelStyle.Render(emptyState)
 	}
 
-	return m.list.View()
+	// Regular list view with header and help bar
+	content := lipgloss.JoinVertical(
+		lipgloss.Left,
+		m.header.View(),
+		"",
+		m.list.View(),
+		"",
+		m.helpBar.View(),
+	)
+	return content
 }
 
 // NoteItem implements list.Item for displaying notes in the list.

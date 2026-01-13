@@ -68,19 +68,23 @@ const (
 // Phase 3: Linking System
 //   - linkScreen: Modal for creating/viewing links
 //   - Ctrl+L opens link modal for selected item
+//
+// Phase 4: UX Overhaul
+//   - quickCaptureScreen: Global quick note capture via Ctrl+X
 type Model struct {
-	width         int
-	height        int
-	currentScreen Screen
-	config        *config.Config
-	store         *sqlite.Store
-	vectorStore   *qdrant.VectorStore
-	semantic      *search.SemanticSearch
-	notesScreen   *screens.NotesListModel
-	todosScreen   *screens.TodosListModel
-	linkScreen    *screens.LinkModel
-	status        string
-	lastUpdate    time.Time
+	width              int
+	height             int
+	currentScreen      Screen
+	config             *config.Config
+	store              *sqlite.Store
+	vectorStore        *qdrant.VectorStore
+	semantic           *search.SemanticSearch
+	notesScreen        *screens.NotesListModel
+	todosScreen        *screens.TodosListModel
+	linkScreen         *screens.LinkModel
+	quickCaptureScreen *screens.QuickCaptureModel
+	status             string
+	lastUpdate         time.Time
 }
 
 // New creates and initializes the application.
@@ -104,17 +108,19 @@ func New(cfg *config.Config) (*Model, error) {
 	notesScreen := screens.NewNotesListModel(store)
 	todosScreen := screens.NewTodosListModel(store)
 	linkScreen := screens.NewLinkModel(store)
+	quickCaptureScreen := screens.NewQuickCaptureModel(store)
 
 	return &Model{
-		currentScreen: ScreenHome,
-		config:        cfg,
-		store:         store,
-		vectorStore:   vectorStore,
-		notesScreen:   &notesScreen,
-		todosScreen:   &todosScreen,
-		linkScreen:    &linkScreen,
-		status:        "Ready",
-		lastUpdate:    time.Now(),
+		currentScreen:      ScreenHome,
+		config:             cfg,
+		store:              store,
+		vectorStore:        vectorStore,
+		notesScreen:        &notesScreen,
+		todosScreen:        &todosScreen,
+		linkScreen:         &linkScreen,
+		quickCaptureScreen: &quickCaptureScreen,
+		status:             "Ready",
+		lastUpdate:         time.Now(),
 	}, nil
 }
 
@@ -135,6 +141,9 @@ func (m *Model) SetSize(width, height int) {
 	if m.linkScreen != nil {
 		m.linkScreen.SetSize(width, height)
 	}
+	if m.quickCaptureScreen != nil {
+		m.quickCaptureScreen.SetSize(width, height)
+	}
 }
 
 // Update handles incoming messages and updates the model.
@@ -146,6 +155,23 @@ func (m *Model) SetSize(width, height int) {
 // Phase 2: Notes & Todos
 //   - Delegates to notesScreen or todosScreen when active
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Handle quick capture modal if open
+	if m.quickCaptureScreen != nil && m.quickCaptureScreen.IsOpen() {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			updatedQC, cmd := m.quickCaptureScreen.Update(msg)
+			m.quickCaptureScreen = &updatedQC
+			// If closed, reload notes in case we're on that screen
+			if !m.quickCaptureScreen.IsOpen() {
+				m.status = "Ready"
+				if m.currentScreen == ScreenNotes {
+					m.notesScreen.LoadNotes()
+				}
+			}
+			return m, cmd
+		}
+	}
+
 	// Handle link modal if open
 	if m.linkScreen != nil && m.linkScreen.IsOpen() {
 		switch msg := msg.(type) {
@@ -178,6 +204,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+h":
 			m.currentScreen = ScreenHome
 			m.status = "Home"
+		case "ctrl+x":
+			// Open quick capture modal from anywhere
+			if m.quickCaptureScreen != nil {
+				m.quickCaptureScreen.Open()
+				m.status = "Quick Capture"
+			}
 		case "ctrl+l":
 			// Open link modal for currently selected item
 			if m.currentScreen == ScreenNotes && m.notesScreen != nil {
@@ -244,8 +276,13 @@ func (m *Model) View() string {
 		content = m.linkScreen.View()
 	}
 
+	// Overlay quick capture modal if open
+	if m.quickCaptureScreen != nil && m.quickCaptureScreen.IsOpen() {
+		content = m.quickCaptureScreen.View()
+	}
+
 	statusBar := styles.StatusBarStyle.Render(
-		fmt.Sprintf(" %s | [Ctrl+N] Notes [Ctrl+T] Todos [Ctrl+F] Focus [Ctrl+L] Link [Ctrl+H] Home [q] Quit ", m.status),
+		fmt.Sprintf(" %s | [Ctrl+X] Capture [Ctrl+N] Notes [Ctrl+T] Todos [Ctrl+L] Link [Ctrl+H] Home [q] Quit ", m.status),
 	)
 
 	return lipgloss.JoinVertical(
