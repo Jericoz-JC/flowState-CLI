@@ -423,6 +423,143 @@ func (s *Store) UpdateSession(session *models.FocusSession) error {
 	return err
 }
 
+// DeleteSession removes a session by ID.
+func (s *Store) DeleteSession(id int64) error {
+	_, err := s.db.Exec("DELETE FROM sessions WHERE id = ?", id)
+	return err
+}
+
+// SessionStats holds aggregated focus session statistics.
+type SessionStats struct {
+	TodaySessions     int // Number of completed sessions today
+	TotalSessions     int // Total completed sessions
+	TotalFocusMinutes int // Total focus time in minutes
+	CurrentStreak     int // Consecutive days with at least one completed session
+	LongestStreak     int // Longest streak ever achieved
+}
+
+// GetSessionStats returns aggregated focus session statistics.
+func (s *Store) GetSessionStats() (*SessionStats, error) {
+	stats := &SessionStats{}
+
+	// Get today's completed sessions using date range
+	now := time.Now()
+	startOfToday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	endOfToday := startOfToday.Add(24 * time.Hour)
+	err := s.db.QueryRow(
+		"SELECT COUNT(*) FROM sessions WHERE status = 'completed' AND start_time >= ? AND start_time < ?",
+		startOfToday, endOfToday,
+	).Scan(&stats.TodaySessions)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get total completed sessions and total focus time
+	err = s.db.QueryRow(
+		"SELECT COUNT(*), COALESCE(SUM(duration), 0) FROM sessions WHERE status = 'completed'",
+	).Scan(&stats.TotalSessions, &stats.TotalFocusMinutes)
+	if err != nil {
+		return nil, err
+	}
+	// Convert seconds to minutes
+	stats.TotalFocusMinutes = stats.TotalFocusMinutes / 60
+
+	// Calculate current streak
+	streak, err := s.GetCurrentStreak()
+	if err != nil {
+		return nil, err
+	}
+	stats.CurrentStreak = streak
+
+	return stats, nil
+}
+
+// GetSessionsForDate returns all completed sessions for a specific date.
+func (s *Store) GetSessionsForDate(date time.Time) ([]models.FocusSession, error) {
+	// Use date range comparison for reliable cross-database compatibility
+	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	rows, err := s.db.Query(
+		"SELECT id, start_time, end_time, duration, status, created_at FROM sessions WHERE start_time >= ? AND start_time < ? ORDER BY start_time DESC",
+		startOfDay, endOfDay,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []models.FocusSession
+	for rows.Next() {
+		var session models.FocusSession
+		if err := rows.Scan(&session.ID, &session.StartTime, &session.EndTime, &session.Duration, &session.Status, &session.CreatedAt); err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, session)
+	}
+	return sessions, nil
+}
+
+// GetCurrentStreak returns the number of consecutive days with at least one completed session.
+func (s *Store) GetCurrentStreak() (int, error) {
+	// Get all completed sessions ordered by start_time descending
+	rows, err := s.db.Query(
+		"SELECT start_time FROM sessions WHERE status = 'completed' ORDER BY start_time DESC",
+	)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	// Collect unique dates
+	seenDates := make(map[string]bool)
+	var dates []time.Time
+	for rows.Next() {
+		var startTime time.Time
+		if err := rows.Scan(&startTime); err != nil {
+			return 0, err
+		}
+		// Truncate to day
+		dateKey := startTime.Format("2006-01-02")
+		if !seenDates[dateKey] {
+			seenDates[dateKey] = true
+			date := time.Date(startTime.Year(), startTime.Month(), startTime.Day(), 0, 0, 0, 0, startTime.Location())
+			dates = append(dates, date)
+		}
+	}
+
+	if len(dates) == 0 {
+		return 0, nil
+	}
+
+	// Check if today or yesterday has a session (streak must be current)
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	yesterday := today.AddDate(0, 0, -1)
+	firstDate := dates[0]
+
+	if !firstDate.Equal(today) && !firstDate.Equal(yesterday) {
+		// Streak is broken (no session today or yesterday)
+		return 0, nil
+	}
+
+	// Count consecutive days
+	streak := 1
+	for i := 1; i < len(dates); i++ {
+		prevDate := dates[i-1]
+		currDate := dates[i]
+		expectedPrev := currDate.AddDate(0, 0, 1)
+
+		if prevDate.Equal(expectedPrev) {
+			streak++
+		} else {
+			break
+		}
+	}
+
+	return streak, nil
+}
+
 // Link Operations (Phase 3: Linking System - upcoming)
 
 // CreateLink creates a relationship between two items.

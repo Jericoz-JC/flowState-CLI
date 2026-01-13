@@ -72,6 +72,9 @@ const (
 //
 // Phase 4: UX Overhaul
 //   - quickCaptureScreen: Global quick note capture via Ctrl+X
+//
+// Phase 5: Focus Sessions
+//   - focusScreen: Pomodoro-style focus timer with session tracking
 type Model struct {
 	width              int
 	height             int
@@ -82,6 +85,7 @@ type Model struct {
 	semantic           *search.SemanticSearch
 	notesScreen        *screens.NotesListModel
 	todosScreen        *screens.TodosListModel
+	focusScreen        *screens.FocusModel
 	linkScreen         *screens.LinkModel
 	quickCaptureScreen *screens.QuickCaptureModel
 	status             string
@@ -108,6 +112,7 @@ func New(cfg *config.Config) (*Model, error) {
 
 	notesScreen := screens.NewNotesListModel(store)
 	todosScreen := screens.NewTodosListModel(store)
+	focusScreen := screens.NewFocusModel(store)
 	linkScreen := screens.NewLinkModel(store)
 	quickCaptureScreen := screens.NewQuickCaptureModel(store)
 
@@ -118,6 +123,7 @@ func New(cfg *config.Config) (*Model, error) {
 		vectorStore:        vectorStore,
 		notesScreen:        &notesScreen,
 		todosScreen:        &todosScreen,
+		focusScreen:        &focusScreen,
 		linkScreen:         &linkScreen,
 		quickCaptureScreen: &quickCaptureScreen,
 		status:             "Ready",
@@ -144,6 +150,9 @@ func (m *Model) SetSize(width, height int) {
 	}
 	if m.quickCaptureScreen != nil {
 		m.quickCaptureScreen.SetSize(width, height)
+	}
+	if m.focusScreen != nil {
+		m.focusScreen.SetSize(width, height)
 	}
 }
 
@@ -202,6 +211,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else if keymap.IsModF(msg) {
 			m.currentScreen = ScreenFocus
 			m.status = "Focus"
+			if m.focusScreen != nil {
+				m.focusScreen.LoadHistory()
+			}
 		} else if keymap.IsModSlash(msg) {
 			m.currentScreen = ScreenSearch
 			m.status = "Search"
@@ -239,6 +251,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ScreenTodos:
 		_, cmd := m.todosScreen.Update(msg)
 		return m, cmd
+	case ScreenFocus:
+		if m.focusScreen != nil {
+			updatedFocus, cmd := m.focusScreen.Update(msg)
+			m.focusScreen = &updatedFocus
+			return m, cmd
+		}
 	}
 
 	return m, nil
@@ -268,7 +286,11 @@ func (m *Model) View() string {
 	case ScreenTodos:
 		content = m.todosScreen.View()
 	case ScreenFocus:
-		content = m.focusView()
+		if m.focusScreen != nil {
+			content = m.focusScreen.View()
+		} else {
+			content = m.focusView()
+		}
 	case ScreenSearch:
 		content = m.searchView()
 	default:
