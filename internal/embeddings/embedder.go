@@ -32,7 +32,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"flowState-cli/internal/config"
+	"github.com/Jericoz-JC/flowState-CLI/internal/config"
 )
 
 // Embedder generates vector embeddings from text.

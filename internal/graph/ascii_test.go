@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
 
-	"flowState-cli/internal/models"
+	"github.com/Jericoz-JC/flowState-CLI/internal/models"
 )
 
 func TestRenderSingleNode(t *testing.T) {
@@ -116,5 +116,3 @@ func TestTagColorCoding(t *testing.T) {
 		t.Fatalf("expected ANSI color codes in output, got:\n%s", out)
 	}
 }
-
-

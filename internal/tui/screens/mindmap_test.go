@@ -6,10 +6,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"flowState-cli/internal/config"
-	"flowState-cli/internal/graph"
-	"flowState-cli/internal/models"
-	"flowState-cli/internal/storage/sqlite"
+	"github.com/Jericoz-JC/flowState-CLI/internal/config"
+	"github.com/Jericoz-JC/flowState-CLI/internal/graph"
+	"github.com/Jericoz-JC/flowState-CLI/internal/models"
+	"github.com/Jericoz-JC/flowState-CLI/internal/storage/sqlite"
 )
 
 func TestMindMapScreenRender(t *testing.T) {
@@ -107,5 +107,3 @@ func TestZoomLevel(t *testing.T) {
 		t.Fatalf("expected zoom 1 after -, got %d", updated2.zoom)
 	}
 }
-
-

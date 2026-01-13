@@ -15,9 +15,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"flowState-cli/internal/models"
-	"flowState-cli/internal/storage/sqlite"
-	"flowState-cli/internal/tui/styles"
+	"github.com/Jericoz-JC/flowState-CLI/internal/models"
+	"github.com/Jericoz-JC/flowState-CLI/internal/storage/sqlite"
+	"github.com/Jericoz-JC/flowState-CLI/internal/tui/styles"
 )
 
 // LinkMode represents what the link modal is doing

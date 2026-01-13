@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"flowState-cli/internal/config"
-	"flowState-cli/internal/models"
+	"github.com/Jericoz-JC/flowState-CLI/internal/config"
+	"github.com/Jericoz-JC/flowState-CLI/internal/models"
 )
 
 // TestNotesCRUD tests Create, Read, Update, Delete operations for notes.

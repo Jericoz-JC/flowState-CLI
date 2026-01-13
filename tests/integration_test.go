@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"flowState-cli/internal/config"
-	embeddings "flowState-cli/internal/embeddings"
-	"flowState-cli/internal/graph"
-	"flowState-cli/internal/models"
-	"flowState-cli/internal/search"
-	"flowState-cli/internal/storage/sqlite"
+	"github.com/Jericoz-JC/flowState-CLI/internal/config"
+	embeddings "github.com/Jericoz-JC/flowState-CLI/internal/embeddings"
+	"github.com/Jericoz-JC/flowState-CLI/internal/graph"
+	"github.com/Jericoz-JC/flowState-CLI/internal/models"
+	"github.com/Jericoz-JC/flowState-CLI/internal/search"
+	"github.com/Jericoz-JC/flowState-CLI/internal/storage/sqlite"
 )
 
 func TestFullWorkflow(t *testing.T) {
@@ -141,5 +141,3 @@ func containsAll(s string, subs []string) bool {
 	}
 	return true
 }
-
-

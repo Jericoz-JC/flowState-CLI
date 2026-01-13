@@ -22,13 +22,13 @@
 package search
 
 import (
-	embeddings "flowState-cli/internal/embeddings"
-	"flowState-cli/internal/storage/sqlite"
+	embeddings "github.com/Jericoz-JC/flowState-CLI/internal/embeddings"
+	"github.com/Jericoz-JC/flowState-CLI/internal/storage/sqlite"
 )
 
 type SemanticSearch struct {
-	embedder    *embeddings.Embedder
-	store       *sqlite.Store
+	embedder *embeddings.Embedder
+	store    *sqlite.Store
 }
 
 func New(embedder *embeddings.Embedder, store *sqlite.Store) *SemanticSearch {

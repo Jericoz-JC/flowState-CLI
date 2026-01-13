@@ -27,8 +27,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"flowState-cli/internal/config"
-	app "flowState-cli/internal/tui"
+	"github.com/Jericoz-JC/flowState-CLI/internal/config"
+	app "github.com/Jericoz-JC/flowState-CLI/internal/tui"
 )
 
 func main() {

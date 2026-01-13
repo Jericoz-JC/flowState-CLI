@@ -95,11 +95,27 @@ flowchart TD
 
 ### Installation
 
+#### Option A (recommended): Download a prebuilt binary (no Go required)
+
+- Go to GitHub Releases and download the archive for your OS/CPU
+- Extract it and run:
+  - macOS/Linux: `./flowstate`
+  - Windows: `.\flowstate.exe`
+
+#### Option B: Build from source (requires Go)
+
 ```bash
-git clone https://github.com/yourusername/flowState-cli
-cd flowState-cli
-go build -o flowState ./cmd/flowState/
-./flowState
+git clone https://github.com/Jericoz-JC/flowState-CLI
+cd flowState-CLI
+go build -o flowstate ./cmd/flowState
+./flowstate
+```
+
+#### Option C: `go install` (requires Go)
+
+```bash
+go install github.com/Jericoz-JC/flowState-CLI/cmd/flowState@latest
+flowState
 ```
 
 ### First Run
@@ -161,6 +177,22 @@ On first run, the application will:
 | `Tab` | Switch between work/break duration |
 | `Enter` | Confirm duration selection |
 | `Esc` | Return to idle / Cancel action |
+
+## Releasing (maintainers)
+
+```bash
+# 1) Commit and push
+git add .
+git commit -m "Prepare for v0.1.0 release"
+git push origin main
+
+# 2) Tag and push the tag
+git tag -a v0.1.0 -m "First release - notes, todos, and focus sessions"
+git push origin v0.1.0
+
+# 3) Build + publish GitHub Release (requires GITHUB_TOKEN)
+goreleaser release --clean
+```
 
 ## Project Structure
 

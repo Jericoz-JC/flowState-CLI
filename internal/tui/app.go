@@ -27,13 +27,13 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"flowState-cli/internal/config"
-	embeddings "flowState-cli/internal/embeddings"
-	"flowState-cli/internal/search"
-	"flowState-cli/internal/storage/sqlite"
-	"flowState-cli/internal/tui/keymap"
-	"flowState-cli/internal/tui/screens"
-	"flowState-cli/internal/tui/styles"
+	"github.com/Jericoz-JC/flowState-CLI/internal/config"
+	embeddings "github.com/Jericoz-JC/flowState-CLI/internal/embeddings"
+	"github.com/Jericoz-JC/flowState-CLI/internal/search"
+	"github.com/Jericoz-JC/flowState-CLI/internal/storage/sqlite"
+	"github.com/Jericoz-JC/flowState-CLI/internal/tui/keymap"
+	"github.com/Jericoz-JC/flowState-CLI/internal/tui/screens"
+	"github.com/Jericoz-JC/flowState-CLI/internal/tui/styles"
 )
 
 // Screen represents the current visible screen.
@@ -243,7 +243,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.showHelpModal = true
 			return m, nil
 		}
-		
+
 		// Use cross-platform key bindings
 		if keymap.IsModN(msg) {
 			m.currentScreen = ScreenNotes

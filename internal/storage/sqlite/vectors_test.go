@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"flowState-cli/internal/config"
-	"flowState-cli/internal/models"
+	"github.com/Jericoz-JC/flowState-CLI/internal/config"
+	"github.com/Jericoz-JC/flowState-CLI/internal/models"
 )
 
 func TestCreateVectorTable(t *testing.T) {
@@ -191,5 +191,3 @@ func TestDeleteEmbeddingOnNoteDelete(t *testing.T) {
 		t.Fatalf("expected embedding to be deleted when note is deleted")
 	}
 }
-
-

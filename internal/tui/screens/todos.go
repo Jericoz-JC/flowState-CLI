@@ -14,11 +14,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"flowState-cli/internal/models"
-	"flowState-cli/internal/storage/sqlite"
-	"flowState-cli/internal/tui/components"
-	"flowState-cli/internal/tui/keymap"
-	"flowState-cli/internal/tui/styles"
+	"github.com/Jericoz-JC/flowState-CLI/internal/models"
+	"github.com/Jericoz-JC/flowState-CLI/internal/storage/sqlite"
+	"github.com/Jericoz-JC/flowState-CLI/internal/tui/components"
+	"github.com/Jericoz-JC/flowState-CLI/internal/tui/keymap"
+	"github.com/Jericoz-JC/flowState-CLI/internal/tui/styles"
 )
 
 // TodosListModel implements the todos management screen.
@@ -54,7 +54,7 @@ type TodosListModel struct {
 	showFilter       bool
 	statusFilter     models.TodoStatus // Filter by status: "", "pending", "completed", "in_progress"
 	showCreate       bool
-	editingID        int64             // 0 = creating new, >0 = editing existing
+	editingID        int64 // 0 = creating new, >0 = editing existing
 	confirmingDelete bool
 	deleteTargetID   int64
 	titleInput       components.TextInputModel
@@ -264,7 +264,7 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			}
-			
+
 			// Check for cross-platform save shortcut
 			if keymap.IsModS(msg) {
 				// Alternative save shortcut
@@ -302,7 +302,7 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			}
-			
+
 			if msg.String() == "esc" {
 				m.showCreate = false
 				m.editingID = 0
@@ -387,7 +387,7 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
-		
+
 		// Check for cross-platform reset shortcut
 		if keymap.IsModR(msg) {
 			// Reset all filters
@@ -486,7 +486,7 @@ func (m *TodosListModel) View() string {
 
 	// Update header with item count
 	m.header.SetItemCount(len(m.list.Items()))
-	
+
 	// Update help hints to include filter (with platform-appropriate mod key)
 	mod := keymap.ModKeyDisplay()
 	listHints := []components.HelpHint{

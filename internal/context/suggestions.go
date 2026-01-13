@@ -4,9 +4,9 @@ import (
 	"sort"
 	"strings"
 
-	"flowState-cli/internal/models"
-	"flowState-cli/internal/search"
-	"flowState-cli/internal/storage/sqlite"
+	"github.com/Jericoz-JC/flowState-CLI/internal/models"
+	"github.com/Jericoz-JC/flowState-CLI/internal/search"
+	"github.com/Jericoz-JC/flowState-CLI/internal/storage/sqlite"
 )
 
 // SuggestRelatedNotes returns notes semantically similar to the given query, excluding excludeNoteID.
@@ -87,5 +87,3 @@ func SuggestLinksFromWikilinks(content string) []string {
 	}
 	return links
 }
-
-

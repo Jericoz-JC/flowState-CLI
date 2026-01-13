@@ -15,11 +15,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"flowState-cli/internal/models"
-	"flowState-cli/internal/storage/sqlite"
-	"flowState-cli/internal/tui/components"
-	"flowState-cli/internal/tui/keymap"
-	"flowState-cli/internal/tui/styles"
+	"github.com/Jericoz-JC/flowState-CLI/internal/models"
+	"github.com/Jericoz-JC/flowState-CLI/internal/storage/sqlite"
+	"github.com/Jericoz-JC/flowState-CLI/internal/tui/components"
+	"github.com/Jericoz-JC/flowState-CLI/internal/tui/keymap"
+	"github.com/Jericoz-JC/flowState-CLI/internal/tui/styles"
 )
 
 // NotesListModel implements the notes management screen.
@@ -50,11 +50,11 @@ type NotesListModel struct {
 	filter           string
 	filterInput      components.TextInputModel
 	showFilter       bool
-	selectedTags     []string          // Tags to filter by
+	selectedTags     []string // Tags to filter by
 	showCreate       bool
-	showPreview      bool              // Preview mode (read-only markdown)
-	previewNote      *models.Note      // Note being previewed
-	editingID        int64             // 0 = creating new, >0 = editing existing
+	showPreview      bool         // Preview mode (read-only markdown)
+	previewNote      *models.Note // Note being previewed
+	editingID        int64        // 0 = creating new, >0 = editing existing
 	confirmingDelete bool
 	deleteTargetID   int64
 	titleInput       components.TextInputModel
@@ -273,7 +273,7 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if title != "" {
 						tags := extractTags(body)
 						wikilinks := parseWikilinks(body)
-						
+
 						if m.editingID > 0 {
 							// Update existing note
 							note := &models.Note{
@@ -309,7 +309,7 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			}
-			
+
 			// Check for cross-platform save shortcut
 			if keymap.IsModS(msg) {
 				// Alternative save shortcut
@@ -318,7 +318,7 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if title != "" {
 					tags := extractTags(body)
 					wikilinks := parseWikilinks(body)
-					
+
 					if m.editingID > 0 {
 						// Update existing note
 						note := &models.Note{
@@ -353,7 +353,7 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			}
-			
+
 			if msg.String() == "esc" {
 				m.showCreate = false
 				m.editingID = 0
@@ -442,7 +442,7 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
-		
+
 		// Check for cross-platform reset shortcut
 		if keymap.IsModR(msg) {
 			// Reset all filters
@@ -547,7 +547,7 @@ func (m *NotesListModel) View() string {
 
 	// Update header with item count and active filters
 	m.header.SetItemCount(len(m.list.Items()))
-	
+
 	// Update help hints to include preview and filter (with platform-appropriate mod key)
 	mod := keymap.ModKeyDisplay()
 	listHints := []components.HelpHint{
@@ -739,7 +739,7 @@ func highlightWikilinks(text string, style lipgloss.Style) string {
 	result := ""
 	inLink := false
 	linkStart := 0
-	
+
 	for i := 0; i < len(text); i++ {
 		if i < len(text)-1 && text[i] == '[' && text[i+1] == '[' {
 			if !inLink {

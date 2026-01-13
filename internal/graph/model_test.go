@@ -3,7 +3,7 @@ package graph
 import (
 	"testing"
 
-	"flowState-cli/internal/models"
+	"github.com/Jericoz-JC/flowState-CLI/internal/models"
 )
 
 func TestBuildGraphFromLinks(t *testing.T) {
@@ -93,5 +93,3 @@ func TestGraphWithTagColors(t *testing.T) {
 		t.Fatalf("expected stable color mapping")
 	}
 }
-
-
