@@ -31,6 +31,7 @@ import (
 	"flowState-cli/internal/search"
 	"flowState-cli/internal/storage/qdrant"
 	"flowState-cli/internal/storage/sqlite"
+	"flowState-cli/internal/tui/keymap"
 	"flowState-cli/internal/tui/screens"
 	"flowState-cli/internal/tui/styles"
 )
@@ -187,30 +188,33 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
-		case "ctrl+n":
+		}
+		
+		// Use cross-platform key bindings
+		if keymap.IsModN(msg) {
 			m.currentScreen = ScreenNotes
 			m.status = "Notes"
 			m.notesScreen.LoadNotes()
-		case "ctrl+t":
+		} else if keymap.IsModT(msg) {
 			m.currentScreen = ScreenTodos
 			m.status = "Todos"
 			m.todosScreen.LoadTodos()
-		case "ctrl+f":
+		} else if keymap.IsModF(msg) {
 			m.currentScreen = ScreenFocus
 			m.status = "Focus"
-		case "ctrl+/":
+		} else if keymap.IsModSlash(msg) {
 			m.currentScreen = ScreenSearch
 			m.status = "Search"
-		case "ctrl+h":
+		} else if keymap.IsModH(msg) {
 			m.currentScreen = ScreenHome
 			m.status = "Home"
-		case "ctrl+x":
+		} else if keymap.IsModX(msg) {
 			// Open quick capture modal from anywhere
 			if m.quickCaptureScreen != nil {
 				m.quickCaptureScreen.Open()
 				m.status = "Quick Capture"
 			}
-		case "ctrl+l":
+		} else if keymap.IsModL(msg) {
 			// Open link modal for currently selected item
 			if m.currentScreen == ScreenNotes && m.notesScreen != nil {
 				if selected := m.notesScreen.GetSelectedNote(); selected != nil {
@@ -281,8 +285,11 @@ func (m *Model) View() string {
 		content = m.quickCaptureScreen.View()
 	}
 
+	// Build status bar with platform-appropriate shortcuts
+	mod := keymap.ModKeyDisplay()
 	statusBar := styles.StatusBarStyle.Render(
-		fmt.Sprintf(" %s | [Ctrl+X] Capture [Ctrl+N] Notes [Ctrl+T] Todos [Ctrl+L] Link [Ctrl+H] Home [q] Quit ", m.status),
+		fmt.Sprintf(" %s | [%s+X] Capture [%s+N] Notes [%s+T] Todos [%s+L] Link [%s+H] Home [q] Quit ", 
+			m.status, mod, mod, mod, mod, mod),
 	)
 
 	return lipgloss.JoinVertical(

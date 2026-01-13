@@ -17,6 +17,7 @@ import (
 	"flowState-cli/internal/models"
 	"flowState-cli/internal/storage/sqlite"
 	"flowState-cli/internal/tui/components"
+	"flowState-cli/internal/tui/keymap"
 	"flowState-cli/internal/tui/styles"
 )
 
@@ -48,13 +49,16 @@ import (
 type TodosListModel struct {
 	list             list.Model
 	store            *sqlite.Store
+	filter           string
+	filterInput      components.TextInputModel
+	showFilter       bool
+	statusFilter     models.TodoStatus // Filter by status: "", "pending", "completed", "in_progress"
 	showCreate       bool
-	editingID        int64 // 0 = creating new, >0 = editing existing
+	editingID        int64             // 0 = creating new, >0 = editing existing
 	confirmingDelete bool
 	deleteTargetID   int64
 	titleInput       components.TextInputModel
 	descInput        components.TextAreaModel
-	filter           string
 	header           components.Header
 	helpBar          components.HelpBar
 	width            int
@@ -70,17 +74,24 @@ func NewTodosListModel(store *sqlite.Store) TodosListModel {
 	l.Title = ""
 	l.SetShowHelp(false) // We'll use our own help bar
 	l.SetShowTitle(false)
+	l.SetFilteringEnabled(false) // We handle filtering ourselves
+
+	filterInput := components.NewTextInput("Type to filter...")
+	filterInput.Blur()
 
 	return TodosListModel{
 		list:             l,
 		store:            store,
+		filter:           "",
+		filterInput:      filterInput,
+		showFilter:       false,
+		statusFilter:     "",
 		showCreate:       false,
 		editingID:        0,
 		confirmingDelete: false,
 		deleteTargetID:   0,
 		titleInput:       components.NewTextInput("Todo title"),
 		descInput:        components.NewTextArea("Description (optional)"),
-		filter:           "",
 		header:           components.NewHeader("✅", "Todos"),
 		helpBar:          components.NewHelpBar(components.TodosListHints),
 	}
@@ -118,8 +129,29 @@ func (m *TodosListModel) LoadTodos() error {
 		return err
 	}
 
-	items := make([]list.Item, 0, len(todos))
+	// Apply filters
+	filtered := make([]models.Todo, 0)
 	for _, todo := range todos {
+		// Filter by search text
+		if m.filter != "" {
+			searchText := strings.ToLower(m.filter)
+			titleMatch := strings.Contains(strings.ToLower(todo.Title), searchText)
+			descMatch := strings.Contains(strings.ToLower(todo.Description), searchText)
+			if !titleMatch && !descMatch {
+				continue
+			}
+		}
+
+		// Filter by status
+		if m.statusFilter != "" && todo.Status != m.statusFilter {
+			continue
+		}
+
+		filtered = append(filtered, todo)
+	}
+
+	items := make([]list.Item, 0, len(filtered))
+	for _, todo := range filtered {
 		items = append(items, TodoItem{todo: todo})
 	}
 
@@ -140,6 +172,30 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Handle filter input
+		if m.showFilter {
+			switch msg.String() {
+			case "enter":
+				m.filter = m.filterInput.Value()
+				m.showFilter = false
+				m.filterInput.Blur()
+				m.LoadTodos()
+				return m, nil
+			case "esc":
+				m.showFilter = false
+				m.filter = ""
+				m.filterInput.SetValue("")
+				m.filterInput.Blur()
+				m.LoadTodos()
+				return m, nil
+			default:
+				var cmd tea.Cmd
+				m.filterInput, cmd = m.filterInput.Update(msg)
+				cmds = append(cmds, cmd)
+				return m, tea.Batch(cmds...)
+			}
+		}
+
 		// Handle delete confirmation dialog
 		if m.confirmingDelete {
 			switch msg.String() {
@@ -207,7 +263,10 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 				return m, nil
-			case "ctrl+s":
+			}
+			
+			// Check for cross-platform save shortcut
+			if keymap.IsModS(msg) {
 				// Alternative save shortcut
 				title := strings.TrimSpace(m.titleInput.Value())
 				desc := strings.TrimSpace(m.descInput.Value())
@@ -242,7 +301,9 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.LoadTodos()
 				}
 				return m, nil
-			case "esc":
+			}
+			
+			if msg.String() == "esc" {
 				m.showCreate = false
 				m.editingID = 0
 				m.titleInput.SetValue("")
@@ -263,6 +324,28 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Handle keys when viewing list - process BEFORE passing to list
 		switch msg.String() {
+		case "/":
+			// Open filter input
+			m.showFilter = true
+			m.filterInput.SetValue(m.filter)
+			m.filterInput.Focus()
+			return m, nil
+		case "f":
+			// Cycle through status filters: all -> pending -> in_progress -> completed -> all
+			switch m.statusFilter {
+			case "":
+				m.statusFilter = models.TodoStatusPending
+			case models.TodoStatusPending:
+				m.statusFilter = models.TodoStatusInProgress
+			case models.TodoStatusInProgress:
+				m.statusFilter = models.TodoStatusCompleted
+			case models.TodoStatusCompleted:
+				m.statusFilter = ""
+			default:
+				m.statusFilter = ""
+			}
+			m.LoadTodos()
+			return m, nil
 		case "c":
 			m.showCreate = true
 			m.editingID = 0
@@ -304,6 +387,15 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
+		
+		// Check for cross-platform reset shortcut
+		if keymap.IsModR(msg) {
+			// Reset all filters
+			m.filter = ""
+			m.statusFilter = ""
+			m.LoadTodos()
+			return m, nil
+		}
 
 		// Pass other keys to list for navigation (j/k, up/down, etc.)
 		var cmd tea.Cmd
@@ -320,7 +412,31 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 //   - Header with title and item count
 //   - Context-sensitive help bar
 //   - Shows create/edit form when active
+//   - Filter input for searching
 func (m *TodosListModel) View() string {
+	// Filter input mode
+	if m.showFilter {
+		filterHints := []components.HelpHint{
+			{Key: "Enter", Description: "Apply", Primary: true},
+			{Key: "Esc", Description: "Cancel"},
+		}
+		m.helpBar.SetHints(filterHints)
+
+		filterLabel := styles.TitleStyle.Render("🔍 Filter Todos")
+		filterHelp := styles.SubtitleStyle.Render("Type to search by title or description")
+
+		content := lipgloss.JoinVertical(
+			lipgloss.Left,
+			filterLabel,
+			"",
+			filterHelp,
+			m.filterInput.View(),
+			"",
+			m.helpBar.View(),
+		)
+		return styles.PanelStyle.Render(content)
+	}
+
 	// Delete confirmation dialog
 	if m.confirmingDelete {
 		m.helpBar.SetHints(components.ConfirmHints)
@@ -370,15 +486,49 @@ func (m *TodosListModel) View() string {
 
 	// Update header with item count
 	m.header.SetItemCount(len(m.list.Items()))
-	m.helpBar.SetHints(components.TodosListHints)
+	
+	// Update help hints to include filter (with platform-appropriate mod key)
+	mod := keymap.ModKeyDisplay()
+	listHints := []components.HelpHint{
+		{Key: "c", Description: "Create", Primary: true},
+		{Key: "e", Description: "Edit"},
+		{Key: "d", Description: "Delete"},
+		{Key: "Space", Description: "Toggle"},
+		{Key: "/", Description: "Filter"},
+		{Key: "f", Description: "Status Filter"},
+		{Key: mod + "+L", Description: "Link"},
+		{Key: mod + "+H", Description: "Home"},
+	}
+	m.helpBar.SetHints(listHints)
+
+	// Show active filters
+	var filterStatus string
+	if m.filter != "" || m.statusFilter != "" {
+		filterParts := []string{}
+		if m.filter != "" {
+			filterParts = append(filterParts, fmt.Sprintf("search:%q", m.filter))
+		}
+		if m.statusFilter != "" {
+			filterParts = append(filterParts, "status:"+string(m.statusFilter))
+		}
+		filterStatusStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#F9E2AF")).
+			Background(lipgloss.Color("#2E2E3E")).
+			Padding(0, 1)
+		filterStatus = filterStatusStyle.Render("🔎 Filtering: " + strings.Join(filterParts, ", ") + " [Ctrl+R to reset]")
+	}
 
 	// Empty state
 	if len(m.list.Items()) == 0 {
+		emptyMsg := "No todos yet. Add something to get done!"
+		if m.filter != "" || m.statusFilter != "" {
+			emptyMsg = "No todos match your filters. Press [Ctrl+R] to reset."
+		}
 		emptyState := lipgloss.JoinVertical(
 			lipgloss.Left,
 			m.header.View(),
 			"",
-			styles.SubtitleStyle.Render("No todos yet. Add something to get done!"),
+			styles.SubtitleStyle.Render(emptyMsg),
 			"",
 			styles.HelpStyle.Render("Press [c] to create your first todo"),
 			"",
@@ -392,6 +542,13 @@ func (m *TodosListModel) View() string {
 		lipgloss.Left,
 		m.header.View(),
 		"",
+	)
+	if filterStatus != "" {
+		content = lipgloss.JoinVertical(lipgloss.Left, content, filterStatus, "")
+	}
+	content = lipgloss.JoinVertical(
+		lipgloss.Left,
+		content,
 		m.list.View(),
 		"",
 		m.helpBar.View(),

@@ -175,23 +175,98 @@ flowState-cli/
 - Visual link indicators
 - Link queries
 
-### Phase 4: Focus Sessions
+### Phase 4: UX Overhaul (Notion-like Experience)
+Goal: transform flowState-cli from a basic TUI into an intuitive, Notion/Obsidian-inspired terminal productivity system with:
+- Seamless note creation with rich-ish formatting affordances (within terminal constraints)
+- Persistent navigation help on every screen
+- Wikilink syntax (`[[Note Name]]`) for inter-note linking
+- Enhanced tagging with clearer visual indicators
+- Mind map foundation for future graph visualization
+
+#### What’s implemented (Phase 4)
+- Persistent help hints via unified bottom help bar
+- Screen headers with consistent titles (and breadcrumb support in the component)
+- Quick Capture modal available globally (`Ctrl+X`)
+- Performance + stability hardening:
+  - Global panic recovery + `debug.log`
+  - DB integrity check on startup (`PRAGMA integrity_check`)
+  - List notes loads only a body preview; full body loads on-demand when editing
+  - Input character limits (title: 200, body: 20,000)
+
+#### Still planned (Phase 4 follow-ups)
+- Wikilinks:
+  - Parse `[[Note Name]]` in note body
+  - Auto-create links and/or placeholder notes for missing targets
+  - Highlight wikilinks in rendered view
+- Tag filtering UX:
+  - `/` filter/search on lists (Notes + Todos)
+  - Optional tag sidebar + tag selection to filter
+- Mind map / graph foundation:
+  - Store methods to return note graph nodes + edges for future visualization
+
+#### User review needed (decisions)
+- Markdown preview in notes: do we want a preview mode, or keep edit-only for now?
+- Preferred Quick Capture shortcut: keep `Ctrl+X`, or add `/` command palette / slash capture?
+- Should tags be “clickable”/selectable in TUI to filter notes?
+
+### Phase 5: Focus Sessions (Previously Phase 4)
 - Pomodoro timer (25/5)
 - Custom durations
 - Session tracking
 - Streak statistics
 
-### Phase 5: Semantic Search
+### Phase 6: Semantic Search (Previously Phase 5)
 - ONNX embedding model
 - Vector indexing
 - Natural language queries
 - Filtered results
 
-### Phase 6: Context & Polish
+### Phase 7: Mind Map View (NEW)
+- Graph visualization of notes
+- Interactive node navigation
+- Cluster detection
+- Tag-based coloring
+
+### Phase 8: Context & Polish (Previously Phase 6)
 - Context-aware suggestions
 - Quick capture
 - UI polish
 - Testing
+
+## Phase 4 Implementation Summary
+
+### ✅ Completed Features
+
+**UX Enhancements:**
+- **Markdown Preview Mode** - Press `p` to view notes in read-only mode with wikilink highlighting
+- **`/` Filter Command** - Search notes/todos by title or content with live filtering
+- **Tag Filtering** - Press `t` to filter notes by tags, visual filter status indicator
+- **Status Filtering** - Press `f` in Todos to cycle through pending/in_progress/completed
+- **Wikilinks** - `[[Note Name]]` syntax auto-parsed and linked on save, creates placeholder notes if needed
+- **Cross-Platform Shortcuts** - Automatic `Ctrl` (Windows/Linux) vs `⌘` (macOS) detection
+
+**Safety & Security Hardening:**
+- **Global panic recovery** - Catches crashes, logs to `debug.log`, exits cleanly
+- **SQLite integrity check** - `PRAGMA integrity_check` on startup
+- **Memory optimization** - `ListNotes()` returns only first 100 chars; full content loaded on-demand
+- **Input limits** - Title: 200 chars, Body: 20,000 chars
+- **Automated tests** - `TestListNotesTruncation` verifies excerpt loading
+
+### 📋 Remaining (Phase 4 Follow-ups)
+- Tag sidebar with all unique tags and counts
+- Mind map graph foundation (`GetNoteGraph()`, `GraphNode`, `GraphEdge`) for Phase 7
+
+## Keyboard Shortcuts (Phase 4 Additions)
+| Key | Action |
+|-----|--------|
+| `Ctrl+X` (or `⌘X` on macOS) | Quick capture note from anywhere |
+| `/` | Open filter/search input |
+| `p` | Preview selected note (read-only with wikilink highlighting) |
+| `t` | Toggle tag filter for selected note |
+| `f` | Cycle status filter (Todos: all → pending → in_progress → completed) |
+| `Ctrl+R` (or `⌘R` on macOS) | Reset all active filters |
+| `[[note]]` | Create wikilink in note body (auto-links on save) |
+| `#tag` | Add tag to note (auto-extracted) |
 
 ## Database Schema
 
