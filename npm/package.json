@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "A unified terminal productivity system for notes, todos, and focus sessions with semantic search",
   "bin": {
-    "flowstate": "./bin/flowstate"
+    "flowstate": "bin/flowstate"
   },
   "scripts": {
     "postinstall": "node install.js"
@@ -41,4 +41,3 @@
     "arm64"
   ]
 }
-
