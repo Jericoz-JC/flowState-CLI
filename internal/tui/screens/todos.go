@@ -89,6 +89,17 @@ func (m *TodosListModel) SetSize(width, height int) {
 	m.list.SetSize(width-4, height-10)
 }
 
+// GetSelectedTodo returns the currently selected todo, or nil if none selected.
+func (m *TodosListModel) GetSelectedTodo() *models.Todo {
+	if len(m.list.Items()) == 0 {
+		return nil
+	}
+	if selected, ok := m.list.SelectedItem().(TodoItem); ok {
+		return &selected.todo
+	}
+	return nil
+}
+
 // LoadTodos refreshes the todo list from the database.
 func (m *TodosListModel) LoadTodos() error {
 	todos, err := m.store.ListTodos()

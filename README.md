@@ -75,7 +75,7 @@ On first run, the application will:
 | `Ctrl+N` | Notes screen |
 | `Ctrl+T` | Todos screen |
 | `Ctrl+F` | Focus session screen |
-| `Ctrl+/` | Semantic search |
+| `Ctrl+L` | Link selected item |
 | `Ctrl+H` | Home screen / Help |
 | `Esc` | Go back / Cancel |
 | `q` | Quit application |
@@ -89,8 +89,18 @@ On first run, the application will:
 | `Space` | Toggle todo completion |
 | `Tab` | Switch between form fields |
 | `Ctrl+S` | Save item |
+| `Ctrl+L` | Create link to another item |
 | `j/↓` | Move selection down |
 | `k/↑` | Move selection up |
+
+#### Linking Modal
+| Key | Action |
+|-----|--------|
+| `c` | Create new link |
+| `d` | Delete selected link |
+| `↑/↓` | Navigate link types or targets |
+| `Enter` | Select / Confirm |
+| `Esc` | Close modal / Go back |
 
 ## Project Structure
 
