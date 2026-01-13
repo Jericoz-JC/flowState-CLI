@@ -269,10 +269,17 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "e":
 			if len(m.list.VisibleItems()) > 0 {
 				if selected, ok := m.list.SelectedItem().(NoteItem); ok {
+					// Phase 4: Performance - Fetch full note content
+					fullNote, err := m.store.GetNote(selected.note.ID)
+					if err != nil || fullNote == nil {
+						// TODO: Show error message
+						return m, nil
+					}
+
 					m.showCreate = true
-					m.editingID = selected.note.ID
-					m.titleInput.SetValue(selected.note.Title)
-					m.bodyInput.SetValue(selected.note.Body)
+					m.editingID = fullNote.ID
+					m.titleInput.SetValue(fullNote.Title)
+					m.bodyInput.SetValue(fullNote.Body)
 					m.titleInput.Focus()
 				}
 			}

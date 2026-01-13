@@ -75,6 +75,15 @@ func New(cfg *config.Config) (*Store, error) {
 		return nil, fmt.Errorf("failed to migrate: %w", err)
 	}
 
+	// Phase 4: Robustness - DB Integrity Check
+	var integrity string
+	if err := db.QueryRow("PRAGMA integrity_check").Scan(&integrity); err != nil {
+		return nil, fmt.Errorf("integrity check failed to run: %w", err)
+	}
+	if integrity != "ok" {
+		return nil, fmt.Errorf("database integrity check failed: %s", integrity)
+	}
+
 	return store, nil
 }
 
@@ -189,8 +198,9 @@ func (s *Store) GetNote(id int64) (*models.Note, error) {
 
 // ListNotes returns all notes ordered by updated_at descending.
 func (s *Store) ListNotes() ([]models.Note, error) {
+	// Phase 4: Performance - Only fetch first 100 chars of body for list view
 	rows, err := s.db.Query(
-		"SELECT id, title, body, tags, created_at, updated_at FROM notes ORDER BY updated_at DESC",
+		"SELECT id, title, substr(body, 1, 100), tags, created_at, updated_at FROM notes ORDER BY updated_at DESC",
 	)
 	if err != nil {
 		return nil, err

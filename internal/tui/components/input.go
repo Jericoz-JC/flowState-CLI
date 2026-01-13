@@ -16,7 +16,7 @@ func NewTextInput(placeholder string) TextInputModel {
 	ti.Placeholder = placeholder
 	ti.Focus()
 	ti.Prompt = "> "
-	ti.CharLimit = 500
+	ti.CharLimit = 200 // Safety: Reasonable limit for titles
 
 	return TextInputModel{textinput: ti, focused: true}
 }
@@ -62,7 +62,7 @@ func NewTextArea(placeholder string) TextAreaModel {
 	ta.Placeholder = placeholder
 	ta.Focus()
 	ta.Prompt = "| "
-	ta.CharLimit = 10000
+	ta.CharLimit = 20000 // Safety: Enforce limit to prevent memory spikes
 	ta.ShowLineNumbers = false
 	ta.SetHeight(10)
 
