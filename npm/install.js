@@ -6,7 +6,9 @@ const path = require("path");
 const { execSync } = require("child_process");
 const zlib = require("zlib");
 
-const VERSION = "0.1.1";
+// Read version from package.json to keep in sync
+const packageJson = require("./package.json");
+const VERSION = packageJson.version;
 const REPO = "Jericoz-JC/flowState-CLI";
 
 // Map Node.js platform/arch to GoReleaser naming
@@ -131,8 +133,20 @@ async function main() {
   } catch (error) {
     console.error("Installation failed:", error.message);
     console.error("");
-    console.error("You can manually download from:");
-    console.error(`  https://github.com/${REPO}/releases/tag/v${VERSION}`);
+    console.error("Troubleshooting:");
+    console.error("  1. Check your internet connection");
+    console.error("  2. Verify the release exists at:");
+    console.error(`     https://github.com/${REPO}/releases/tag/v${VERSION}`);
+    console.error("");
+    console.error("Manual installation:");
+    console.error(`  - Download: flowstate-${platform}-${arch}.${platform === "windows" ? "zip" : "tar.gz"}`);
+    console.error(`  - Extract to: ${binDir}`);
+    if (!isWindows) {
+      console.error(`  - Run: chmod +x ${binaryPath}`);
+    }
+    console.error("");
+    console.error("Or install via Go:");
+    console.error("  go install github.com/Jericoz-JC/flowState-CLI/cmd/flowState@latest");
     process.exit(1);
   }
 }
