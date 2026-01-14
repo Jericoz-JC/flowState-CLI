@@ -49,17 +49,18 @@ func TestQuickCaptureHintsHasEsc(t *testing.T) {
 func TestFocusDurationHintsShowLiveUpdate(t *testing.T) {
 	t.Parallel()
 
-	// Verify FocusDurationHints indicates live update behavior
+	// Verify FocusDurationHints indicates live/auto-save update behavior
 	foundLiveHint := false
 	for _, hint := range FocusDurationHints {
-		if strings.Contains(hint.Description, "live") || strings.Contains(hint.Description, "Live") {
+		desc := strings.ToLower(hint.Description)
+		if strings.Contains(desc, "live") || strings.Contains(desc, "auto") {
 			foundLiveHint = true
 			break
 		}
 	}
 
 	if !foundLiveHint {
-		t.Errorf("expected FocusDurationHints to indicate live update behavior")
+		t.Errorf("expected FocusDurationHints to indicate live/auto-save update behavior")
 	}
 }
 

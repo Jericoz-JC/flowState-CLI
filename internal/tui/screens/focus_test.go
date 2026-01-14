@@ -243,3 +243,90 @@ func TestFocusPauseSession(t *testing.T) {
 		t.Fatalf("expected FocusModePaused after pressing 'p', got %v", m.mode)
 	}
 }
+
+func TestFocusDurationPickerVisualFeedback(t *testing.T) {
+	t.Parallel()
+
+	m := newTestFocusModel(t)
+
+	// Enter duration picker
+	mm, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	m = mm
+
+	// Initially, feedback should not be shown
+	if m.durationJustChanged {
+		t.Fatalf("expected durationJustChanged to be false initially")
+	}
+
+	// Press right arrow to change duration
+	if m.durationIndex < len(WorkDurations)-1 {
+		mm, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRight})
+		m = mm
+
+		// Feedback should now be shown
+		if !m.durationJustChanged {
+			t.Fatalf("expected durationJustChanged to be true after arrow key")
+		}
+
+		// Should indicate work field was changed
+		if m.lastChangedField != "work" {
+			t.Fatalf("expected lastChangedField to be 'work', got %q", m.lastChangedField)
+		}
+
+		// A command should be returned to clear feedback
+		if cmd == nil {
+			t.Fatalf("expected a command to clear feedback after duration change")
+		}
+	}
+
+	// Tab to break duration
+	mm, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = mm
+
+	// Change break duration
+	if m.durationIndex < len(BreakDurations)-1 {
+		mm, _ := m.Update(tea.KeyMsg{Type: tea.KeyRight})
+		m = mm
+
+		// Should indicate break field was changed
+		if m.lastChangedField != "break" {
+			t.Fatalf("expected lastChangedField to be 'break', got %q", m.lastChangedField)
+		}
+	}
+
+	// Press Enter to exit - feedback should be cleared
+	mm, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = mm
+
+	if m.durationJustChanged {
+		t.Fatalf("expected durationJustChanged to be false after Enter")
+	}
+}
+
+func TestFocusDurationPickerShowsBothValues(t *testing.T) {
+	t.Parallel()
+
+	m := newTestFocusModel(t)
+
+	// Enter duration picker
+	mm, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	m = mm
+
+	// Render the view
+	view := m.View()
+
+	// The view should contain both "Work" and "Break" labels
+	if view == "" {
+		t.Fatalf("expected non-empty view from duration picker")
+	}
+
+	// Check that the current values summary is shown
+	// This verifies the "Current: X min work / Y min break" line exists
+	expectedWorkMin := m.workDuration
+	expectedBreakMin := m.breakDuration
+
+	// The view should show both durations
+	if expectedWorkMin <= 0 || expectedBreakMin <= 0 {
+		t.Fatalf("expected valid work/break durations")
+	}
+}

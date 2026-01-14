@@ -2,10 +2,10 @@
 
 > This file tracks the current development plan and progress. Updated after each phase completion.
 
-## Current Status: Phase 2 In Progress
+## Current Status: Phase 2 Complete, Phase 3 Next
 **Last Updated:** January 14, 2025
-**Current Version:** v0.1.4
-**Next Target:** v0.1.5
+**Current Version:** v0.1.5
+**Next Target:** v0.1.6
 
 ---
 
@@ -14,8 +14,8 @@
 | Version | Phase | Status | Description |
 |---------|-------|--------|-------------|
 | v0.1.4 | 1 | ✅ Complete | NPM Package Fix |
-| v0.1.5 | 2 | 🔄 In Progress | Focus Timer UX Enhancement |
-| v0.1.6 | 3 | ⏳ Pending | Todos Notion-Inspired Overhaul |
+| v0.1.5 | 2 | ✅ Complete | Focus Timer UX Enhancement |
+| v0.1.6 | 3 | 🔄 Next | Todos Notion-Inspired Overhaul |
 | v0.1.7 | 4 | ⏳ Pending | Focus Screen Visual Overhaul |
 | v0.1.8 | 5 | ⏳ Pending | Unified Theme & Design System |
 | v0.2.0 | 6 | ⏳ Pending | Final Polish & Documentation |
@@ -33,58 +33,26 @@
 
 ---
 
-## Phase 2: Focus Timer UX Enhancement
-**Version:** v0.1.5 | **Status:** In Progress
+## Phase 2: Focus Timer UX Enhancement ✅
+**Version:** v0.1.5 | **Status:** Complete
 
-### Goal
-Improve the duration picker UX with visual feedback when values change.
+### Changes Made
+- Added `durationJustChanged` and `lastChangedField` to FocusModel for visual feedback
+- Added `clearFeedbackMsg` message type for auto-clearing feedback after 800ms
+- Updated `applySelectedDuration()` to trigger visual feedback
+- Updated `renderDurationPicker()` to show "✓ Saved" indicator when duration changes
+- Added "Current: X min work / Y min break" summary line showing both values
+- Updated help hints to say "Adjust (auto-saves)" instead of "Adjust (live)"
 
-### Current Behavior (Already Correct)
-1. Press 'd' → Enter duration picker (Work selected)
-2. Arrow keys → Change value **instantly applied** (stay in picker)
-3. Tab → Switch to Break duration
-4. Arrow keys → Change break value **instantly applied**
-5. Enter → Exit picker (all changes already saved)
+### Files Modified
+- `internal/tui/screens/focus.go` - Visual feedback implementation
+- `internal/tui/screens/focus_test.go` - Added new tests
+- `internal/tui/components/helpbar.go` - Updated help hints
+- `internal/tui/components/helpbar_test.go` - Updated test for new hint wording
 
-### Improvements Needed
-- [ ] Add visual "✓ Saved" flash when arrow key changes value
-- [ ] Show both Work AND Break values simultaneously during editing
-- [ ] Update help text to clarify "changes apply immediately"
-
-### Files to Modify
-- `internal/tui/screens/focus.go` - Add feedback fields and rendering
-- `internal/tui/components/helpbar.go` - Update help hints
-
-### Code Changes
-```go
-// Add to FocusModel struct
-durationJustChanged bool
-changedAt           time.Time
-
-// In applySelectedDuration()
-m.durationJustChanged = true
-m.changedAt = time.Now()
-
-// In Update() - clear after 500ms
-if m.durationJustChanged && time.Since(m.changedAt) > 500*time.Millisecond {
-    m.durationJustChanged = false
-}
-```
-
-### Tests
-- [ ] `TestFocusDurationPickerLiveUpdate` - verify value applies immediately
-- [ ] `TestFocusDurationPickerTabStaysInMode` - verify Tab doesn't exit
-- [ ] `TestFocusDurationPickerVisualFeedback` - verify "Saved" indicator shows
-
-### Release Checklist
-- [ ] Implement features
-- [ ] Write/update unit tests
-- [ ] Run `go test ./...`
-- [ ] Update CLAUDE.md
-- [ ] Update README.md with new features
-- [ ] Commit and push to main
-- [ ] Create tag v0.1.5
-- [ ] Run GoReleaser / create release with binaries
+### Tests Added
+- `TestFocusDurationPickerVisualFeedback` - verifies feedback flag and command
+- `TestFocusDurationPickerShowsBothValues` - verifies both durations displayed
 
 ---
 

@@ -42,6 +42,9 @@ var (
 // tickMsg is sent every second when timer is running.
 type tickMsg time.Time
 
+// clearFeedbackMsg is sent to clear the "Saved" indicator after a delay.
+type clearFeedbackMsg struct{}
+
 // FocusModel implements the focus session screen.
 //
 // Phase 5: Focus Sessions
@@ -75,8 +78,10 @@ type FocusModel struct {
 	width          int
 	height         int
 	// Duration picker state
-	durationIndex int  // Currently selected duration preset
-	selectingWork bool // true = selecting work duration, false = break duration
+	durationIndex       int       // Currently selected duration preset
+	selectingWork       bool      // true = selecting work duration, false = break duration
+	durationJustChanged bool      // Show "Saved" indicator briefly
+	lastChangedField    string    // "work" or "break" - which field was just changed
 }
 
 // NewFocusModel creates a new focus session screen.
@@ -161,6 +166,12 @@ func (m *FocusModel) Update(msg tea.Msg) (FocusModel, tea.Cmd) {
 			}
 			cmds = append(cmds, tickCmd())
 		}
+
+	case clearFeedbackMsg:
+		// Clear the "Saved" indicator
+		m.durationJustChanged = false
+		m.lastChangedField = ""
+		return *m, nil
 
 	case tea.KeyMsg:
 		switch m.mode {
@@ -307,8 +318,8 @@ func (m *FocusModel) handleTimerInput(msg tea.KeyMsg) (FocusModel, tea.Cmd) {
 }
 
 // handleDurationInput handles keyboard input for duration picker.
-// UX: Arrow keys update values immediately (live preview), Tab switches fields,
-// single Enter confirms both values and exits.
+// UX: Arrow keys update values immediately (live preview) with visual feedback,
+// Tab switches fields, Enter confirms all and exits.
 func (m *FocusModel) handleDurationInput(msg tea.KeyMsg) (FocusModel, tea.Cmd) {
 	durations := WorkDurations
 	if !m.selectingWork {
@@ -319,14 +330,16 @@ func (m *FocusModel) handleDurationInput(msg tea.KeyMsg) (FocusModel, tea.Cmd) {
 	case "left", "h":
 		if m.durationIndex > 0 {
 			m.durationIndex--
-			// Live update: immediately apply the selected value
-			m.applySelectedDuration(durations)
+			// Live update: immediately apply and show feedback
+			cmd := m.applySelectedDuration(durations)
+			return *m, cmd
 		}
 	case "right", "l":
 		if m.durationIndex < len(durations)-1 {
 			m.durationIndex++
-			// Live update: immediately apply the selected value
-			m.applySelectedDuration(durations)
+			// Live update: immediately apply and show feedback
+			cmd := m.applySelectedDuration(durations)
+			return *m, cmd
 		}
 	case "tab", "shift+tab":
 		// Switch between work and break duration selection
@@ -340,23 +353,36 @@ func (m *FocusModel) handleDurationInput(msg tea.KeyMsg) (FocusModel, tea.Cmd) {
 		// Confirm both values and exit to idle
 		// Values are already applied via live update, just exit
 		m.mode = FocusModeIdle
+		m.durationJustChanged = false
 	case "esc":
 		// Cancel - restore original values would need tracking, for now just exit
 		m.mode = FocusModeIdle
+		m.durationJustChanged = false
 	}
 
 	return *m, nil
 }
 
 // applySelectedDuration applies the currently selected duration immediately.
-func (m *FocusModel) applySelectedDuration(durations []int) {
+// Returns a command to clear the feedback indicator after 800ms.
+func (m *FocusModel) applySelectedDuration(durations []int) tea.Cmd {
 	if m.selectingWork {
 		m.workDuration = durations[m.durationIndex]
 		m.remaining = time.Duration(m.workDuration) * time.Minute
 		m.totalDuration = m.remaining
+		m.lastChangedField = "work"
 	} else {
 		m.breakDuration = durations[m.durationIndex]
+		m.lastChangedField = "break"
 	}
+
+	// Show "Saved" indicator
+	m.durationJustChanged = true
+
+	// Return command to clear feedback after delay
+	return tea.Tick(800*time.Millisecond, func(t time.Time) tea.Msg {
+		return clearFeedbackMsg{}
+	})
 }
 
 // handleHistoryInput handles keyboard input for history view.
@@ -609,28 +635,51 @@ func (m *FocusModel) renderDurationPicker() string {
 
 	title := styles.TitleStyle.Render("⏱ Set Duration")
 
+	// Saved indicator style
+	savedStyle := lipgloss.NewStyle().
+		Foreground(styles.SuccessColor).
+		Bold(true)
+
 	// Work duration selection
 	workLabel := styles.SubtitleStyle.Render("Work Duration:")
+	workSaved := ""
 	if m.selectingWork {
 		workLabel = styles.SelectedItemStyle.Render("▶ Work Duration:")
 	}
+	if m.durationJustChanged && m.lastChangedField == "work" {
+		workSaved = savedStyle.Render(" ✓ Saved")
+	}
 	workOptions := m.renderDurationOptions(WorkDurations, m.workDuration, m.selectingWork)
+	workRow := lipgloss.JoinHorizontal(lipgloss.Left, workLabel, workSaved)
 
 	// Break duration selection
 	breakLabel := styles.SubtitleStyle.Render("Break Duration:")
+	breakSaved := ""
 	if !m.selectingWork {
 		breakLabel = styles.SelectedItemStyle.Render("▶ Break Duration:")
 	}
+	if m.durationJustChanged && m.lastChangedField == "break" {
+		breakSaved = savedStyle.Render(" ✓ Saved")
+	}
 	breakOptions := m.renderDurationOptions(BreakDurations, m.breakDuration, !m.selectingWork)
+	breakRow := lipgloss.JoinHorizontal(lipgloss.Left, breakLabel, breakSaved)
+
+	// Current values summary
+	summaryStyle := lipgloss.NewStyle().
+		Foreground(styles.MutedColor).
+		Italic(true)
+	summary := summaryStyle.Render(fmt.Sprintf("Current: %d min work / %d min break", m.workDuration, m.breakDuration))
 
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,
 		title,
 		"",
-		workLabel,
+		summary,
+		"",
+		workRow,
 		workOptions,
 		"",
-		breakLabel,
+		breakRow,
 		breakOptions,
 		"",
 		m.helpBar.View(),

@@ -194,10 +194,15 @@ On first run, the application will:
 | `b` | Skip to break / Skip break |
 | `d` | Change work/break duration |
 | `h` | Toggle history view |
-| `←/→` | Select duration preset (in picker) |
-| `Tab` | Switch between work/break duration |
-| `Enter` | Confirm duration selection |
 | `Esc` | Return to idle / Cancel action |
+
+#### Duration Picker (press `d` to open)
+| Key | Action |
+|-----|--------|
+| `←/→` | Adjust duration (auto-saves with ✓ indicator) |
+| `Tab` | Switch between work/break duration |
+| `Enter` | Done - exit duration picker |
+| `Esc` | Cancel and exit |
 
 ## Releasing (maintainers)
 

@@ -193,11 +193,11 @@ var (
 	}
 
 	// FocusDurationHints are the hints for duration picker
-	// UX: Arrow keys update live, Tab switches work/break, Enter confirms all
+	// UX: Arrow keys update live with visual feedback, Tab switches work/break, Enter exits
 	FocusDurationHints = []HelpHint{
-		{Key: "←/→", Description: "Adjust (live)"},
+		{Key: "←/→", Description: "Adjust (auto-saves)", Primary: true},
 		{Key: "Tab", Description: "Work/Break"},
-		{Key: "Enter", Description: "Done", Primary: true},
+		{Key: "Enter", Description: "Done"},
 		{Key: "Esc", Description: "Cancel"},
 	}
 
