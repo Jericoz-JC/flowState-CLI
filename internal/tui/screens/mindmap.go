@@ -137,10 +137,10 @@ func (m *MindMapModel) View() string {
 
 	canvasW, canvasH := m.canvasSize()
 
-	// Mark selected node with a distinct color (best-effort).
+	// Mark selected node with a distinct color (ARCHWAVE neon cyan).
 	colors := map[string]string{}
 	if len(m.nodeOrder) > 0 {
-		colors[m.nodeOrder[m.selected]] = "#22D3EE"
+		colors[m.nodeOrder[m.selected]] = "#5ffbf1"
 	}
 
 	art := graph.RenderGraphASCII(m.g, m.labels, m.positions, canvasW, canvasH, colors)

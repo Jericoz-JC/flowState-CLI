@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/Jericoz-JC/flowState-CLI/internal/tui/styles"
 )
 
 // Breadcrumb represents a navigation path element.
@@ -61,23 +63,20 @@ func (h *Header) SetTitle(icon, title string) {
 
 // View renders the header.
 func (h *Header) View() string {
-	// Styles
+	// Styles using centralized ARCHWAVE theme
 	titleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#A78BFA")). // Primary violet
+		Foreground(styles.PrimaryColor).
 		Bold(true)
 
 	iconStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#22D3EE")) // Cyan
+		Foreground(styles.SecondaryColor)
 
 	breadcrumbStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#6C7086")) // Muted
+		Foreground(styles.MutedColor)
 
 	countStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#6C7086")).
+		Foreground(styles.MutedColor).
 		Italic(true)
-
-	borderStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#313244"))
 
 	// Build title line
 	titleLine := iconStyle.Render(h.icon) + " " + titleStyle.Render(h.title)
@@ -105,15 +104,15 @@ func (h *Header) View() string {
 			parts = append(parts, crumb.Icon+" "+crumb.Title)
 		}
 		parts = append(parts, h.icon+" "+h.title)
-		breadcrumbLine = breadcrumbStyle.Render(strings.Join(parts, " → "))
+		breadcrumbLine = breadcrumbStyle.Render(strings.Join(parts, " " + styles.DecoArrow + " "))
 	}
 
-	// Build divider
+	// Build vaporwave divider
 	dividerLen := h.width - 4 // Account for padding
 	if dividerLen < 10 {
 		dividerLen = 10
 	}
-	divider := borderStyle.Render(strings.Repeat("─", dividerLen))
+	divider := styles.VaporwaveDivider(dividerLen)
 
 	// Combine parts
 	if breadcrumbLine != "" {

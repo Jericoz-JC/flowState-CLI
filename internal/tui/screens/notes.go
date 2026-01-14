@@ -231,6 +231,18 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.showPreview = false
 				m.previewNote = nil
 				return m, nil
+			case "e":
+				// Edit directly from preview
+				if m.previewNote != nil {
+					m.showPreview = false
+					m.showCreate = true
+					m.editingID = m.previewNote.ID
+					m.titleInput.SetValue(m.previewNote.Title)
+					m.bodyInput.SetValue(m.previewNote.Body)
+					m.titleInput.Focus()
+					m.previewNote = nil
+				}
+				return m, nil
 			}
 			return m, nil
 		}
@@ -306,8 +318,10 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.bodyInput.SetValue("")
 						m.LoadNotes()
 					}
+					return m, nil
 				}
-				return m, nil
+				// When body is focused, DON'T return - let Enter pass through
+				// to the textarea for newline handling (falls through to input update below)
 			}
 
 			// Check for cross-platform save shortcut
@@ -575,8 +589,8 @@ func (m *NotesListModel) View() string {
 			}
 		}
 		filterStatusStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#F9E2AF")).
-			Background(lipgloss.Color("#2E2E3E")).
+			Foreground(styles.CreamYellow).
+			Background(styles.SurfaceColor).
 			Padding(0, 1)
 		filterStatus = filterStatusStyle.Render("🔎 Filtering: " + strings.Join(filterParts, ", ") + " [Ctrl+R to reset]")
 	}
@@ -670,26 +684,26 @@ func (m *NotesListModel) renderPreview() string {
 	}
 
 	titleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#A78BFA")).
+		Foreground(styles.PrimaryColor).
 		Bold(true).
 		Padding(0, 1)
 
 	dateStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#6C7086")).
+		Foreground(styles.MutedColor).
 		Italic(true)
 
 	tagStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#F472B6")).
-		Background(lipgloss.Color("#2E2E3E")).
+		Foreground(styles.AccentColor).
+		Background(styles.SurfaceColor).
 		Padding(0, 1).
 		MarginRight(1)
 
 	bodyStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#CDD6F4")).
+		Foreground(styles.TextColor).
 		Padding(1, 2)
 
 	wikilinkStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#22D3EE")).
+		Foreground(styles.SecondaryColor).
 		Underline(true)
 
 	// Title
@@ -713,11 +727,8 @@ func (m *NotesListModel) renderPreview() string {
 	body = highlightWikilinks(body, wikilinkStyle)
 	body = bodyStyle.Render(body)
 
-	// Help hints
-	helpStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#6C7086")).
-		Padding(1, 2)
-	help := helpStyle.Render("[p/esc] Close preview  [e] Edit")
+	// Use helpbar for consistent styling
+	m.helpBar.SetHints(components.NotesPreviewHints)
 
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -727,7 +738,7 @@ func (m *NotesListModel) renderPreview() string {
 		"",
 		body,
 		"",
-		help,
+		m.helpBar.View(),
 	)
 
 	return styles.PanelStyle.Render(content)

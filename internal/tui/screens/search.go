@@ -160,13 +160,13 @@ func (m *SearchModel) View() string {
 	contentParts = append(contentParts, queryLine)
 
 	if m.loading {
-		loadingStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#A6ADC8"))
+		loadingStyle := lipgloss.NewStyle().Foreground(styles.SecondaryColor)
 		contentParts = append(contentParts, "")
-		contentParts = append(contentParts, loadingStyle.Render("Searching..."))
+		contentParts = append(contentParts, loadingStyle.Render("✦ Searching..."))
 	}
 
 	if m.errText != "" {
-		errStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F38BA8"))
+		errStyle := lipgloss.NewStyle().Foreground(styles.ErrorColor)
 		contentParts = append(contentParts, "")
 		contentParts = append(contentParts, errStyle.Render("Error: "+m.errText))
 	}
@@ -187,11 +187,12 @@ func (m *SearchModel) renderResults(width int) string {
 		return styles.HelpStyle.Render("No results.")
 	}
 
-	rowStyle := lipgloss.NewStyle().Width(width)
+	rowStyle := lipgloss.NewStyle().Width(width).Foreground(styles.TextColor)
 	selectedStyle := lipgloss.NewStyle().
 		Width(width).
-		Background(lipgloss.Color("#313244")).
-		Foreground(lipgloss.Color("#CDD6F4"))
+		Background(styles.SurfaceColor).
+		Foreground(styles.SecondaryColor).
+		Bold(true)
 
 	lines := make([]string, 0, len(m.results))
 	for i, r := range m.results {

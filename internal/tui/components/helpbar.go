@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/Jericoz-JC/flowState-CLI/internal/tui/styles"
 )
 
 // HelpHint represents a single keyboard shortcut hint.
@@ -48,23 +50,20 @@ func (h *HelpBar) View() string {
 		return ""
 	}
 
-	// Styles
+	// Styles using centralized ARCHWAVE theme
 	keyStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#F472B6")). // Pink accent
+		Foreground(styles.AccentColor). // Hot pink
 		Bold(true)
 
 	primaryKeyStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#22D3EE")). // Cyan for primary
+		Foreground(styles.SecondaryColor). // Neon cyan
 		Bold(true)
 
 	descStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#6C7086")) // Muted text
-
-	separatorStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#313244")) // Border color
+		Foreground(styles.MutedColor) // Pale blue
 
 	barStyle := lipgloss.NewStyle().
-		Background(lipgloss.Color("#1E1E2E")). // Surface color
+		Background(styles.SurfaceColor). // Dark purple
 		Padding(0, 1).
 		Width(h.width)
 
@@ -79,7 +78,8 @@ func (h *HelpBar) View() string {
 		parts = append(parts, part)
 	}
 
-	separator := separatorStyle.Render(" • ")
+	// Use vaporwave separator
+	separator := styles.VaporwaveSeparator()
 	content := strings.Join(parts, separator)
 
 	return barStyle.Render(content)
@@ -100,9 +100,10 @@ var (
 	NotesListHints = []HelpHint{
 		{Key: "c", Description: "Create", Primary: true},
 		{Key: "e", Description: "Edit"},
+		{Key: "p", Description: "Preview"},
 		{Key: "d", Description: "Delete"},
 		{Key: "/", Description: "Filter"},
-		{Key: "Ctrl+L", Description: "Link"},
+		{Key: "Ctrl+R", Description: "Reset"},
 		{Key: "Ctrl+H", Description: "Home"},
 	}
 
@@ -111,6 +112,13 @@ var (
 		{Key: "Tab", Description: "Switch Field"},
 		{Key: "Ctrl+S", Description: "Save", Primary: true},
 		{Key: "Esc", Description: "Cancel"},
+	}
+
+	// NotesPreviewHints are the hints when previewing a note
+	NotesPreviewHints = []HelpHint{
+		{Key: "e", Description: "Edit", Primary: true},
+		{Key: "Esc", Description: "Close"},
+		{Key: "p", Description: "Close"},
 	}
 
 	// TodosListHints are the hints for the todos list view
@@ -132,7 +140,7 @@ var (
 
 	// QuickCaptureHints are the hints for quick capture modal
 	QuickCaptureHints = []HelpHint{
-		{Key: "Enter", Description: "Save", Primary: true},
+		{Key: "Ctrl+S", Description: "Save", Primary: true},
 		{Key: "Esc", Description: "Cancel"},
 	}
 
@@ -185,10 +193,11 @@ var (
 	}
 
 	// FocusDurationHints are the hints for duration picker
+	// UX: Arrow keys update live, Tab switches work/break, Enter confirms all
 	FocusDurationHints = []HelpHint{
-		{Key: "←/→", Description: "Select"},
-		{Key: "Tab", Description: "Switch"},
-		{Key: "Enter", Description: "Confirm", Primary: true},
+		{Key: "←/→", Description: "Adjust (live)"},
+		{Key: "Tab", Description: "Work/Break"},
+		{Key: "Enter", Description: "Done", Primary: true},
 		{Key: "Esc", Description: "Cancel"},
 	}
 

@@ -245,38 +245,48 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Use cross-platform key bindings
-		if keymap.IsModN(msg) {
-			m.currentScreen = ScreenNotes
-			m.status = "Notes"
-			m.notesScreen.LoadNotes()
-		} else if keymap.IsModT(msg) {
-			m.currentScreen = ScreenTodos
-			m.status = "Todos"
-			m.todosScreen.LoadTodos()
-		} else if keymap.IsModF(msg) {
-			m.currentScreen = ScreenFocus
-			m.status = "Focus"
-			if m.focusScreen != nil {
-				m.focusScreen.LoadHistory()
-			}
-		} else if keymap.IsModSlash(msg) {
-			m.currentScreen = ScreenSearch
-			m.status = "Search"
-		} else if keymap.IsModG(msg) {
-			m.currentScreen = ScreenMindMap
-			m.status = "Mind Map"
-			if m.mindMapScreen != nil {
-				_ = m.mindMapScreen.LoadGraph()
-			}
-		} else if keymap.IsModH(msg) {
+		// IMPORTANT: Return early after handling global shortcuts to prevent
+		// the key event from being passed to screen components (which might consume it)
+		if keymap.IsModH(msg) {
+			// Ctrl+H: Go Home - highest priority navigation
 			m.currentScreen = ScreenHome
 			m.status = "Home"
+			return m, nil
 		} else if keymap.IsModX(msg) {
 			// Open quick capture modal from anywhere
 			if m.quickCaptureScreen != nil {
 				m.quickCaptureScreen.Open()
 				m.status = "Quick Capture"
 			}
+			return m, nil
+		} else if keymap.IsModN(msg) {
+			m.currentScreen = ScreenNotes
+			m.status = "Notes"
+			m.notesScreen.LoadNotes()
+			return m, nil
+		} else if keymap.IsModT(msg) {
+			m.currentScreen = ScreenTodos
+			m.status = "Todos"
+			m.todosScreen.LoadTodos()
+			return m, nil
+		} else if keymap.IsModF(msg) {
+			m.currentScreen = ScreenFocus
+			m.status = "Focus"
+			if m.focusScreen != nil {
+				m.focusScreen.LoadHistory()
+			}
+			return m, nil
+		} else if keymap.IsModSlash(msg) {
+			m.currentScreen = ScreenSearch
+			m.status = "Search"
+			return m, nil
+		} else if keymap.IsModG(msg) {
+			m.currentScreen = ScreenMindMap
+			m.status = "Mind Map"
+			if m.mindMapScreen != nil {
+				_ = m.mindMapScreen.LoadGraph()
+			}
+			return m, nil
 		} else if keymap.IsModL(msg) {
 			// Open link modal for currently selected item
 			if m.currentScreen == ScreenNotes && m.notesScreen != nil {
@@ -290,6 +300,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.status = "Links"
 				}
 			}
+			return m, nil
 		}
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)
@@ -403,28 +414,33 @@ func (m *Model) View() string {
 func (m *Model) helpModalView() string {
 	mod := keymap.ModKeyDisplay()
 	box := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("#313244")).
+		Border(lipgloss.DoubleBorder()).
+		BorderForeground(styles.AccentColor). // Hot pink border
 		Padding(1, 2).
 		Width(52)
 
-	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#22D3EE")).Render("Keyboard Shortcuts")
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.SecondaryColor) // Neon cyan
+	keyStyle := lipgloss.NewStyle().Foreground(styles.AccentColor)                 // Hot pink
+	descStyle := lipgloss.NewStyle().Foreground(styles.TextColor)                  // Off-white
+	mutedStyle := lipgloss.NewStyle().Foreground(styles.MutedColor)                // Pale blue
+
+	title := titleStyle.Render(styles.DecoStar + " Keyboard Shortcuts " + styles.DecoStar)
 	lines := []string{
 		title,
 		"",
-		fmt.Sprintf("%s+X  Quick Capture", mod),
-		fmt.Sprintf("%s+N  Notes", mod),
-		fmt.Sprintf("%s+T  Todos", mod),
-		fmt.Sprintf("%s+F  Focus", mod),
-		fmt.Sprintf("%s+/  Search", mod),
-		fmt.Sprintf("%s+G  Mind Map", mod),
-		fmt.Sprintf("%s+L  Links", mod),
-		fmt.Sprintf("%s+H  Home", mod),
+		keyStyle.Render(mod+"+X") + descStyle.Render("  Quick Capture"),
+		keyStyle.Render(mod+"+N") + descStyle.Render("  Notes"),
+		keyStyle.Render(mod+"+T") + descStyle.Render("  Todos"),
+		keyStyle.Render(mod+"+F") + descStyle.Render("  Focus"),
+		keyStyle.Render(mod+"+/") + descStyle.Render("  Search"),
+		keyStyle.Render(mod+"+G") + descStyle.Render("  Mind Map"),
+		keyStyle.Render(mod+"+L") + descStyle.Render("  Links"),
+		keyStyle.Render(mod+"+H") + descStyle.Render("  Home"),
 		"",
-		"q     Quit",
-		"?     Toggle this help",
+		keyStyle.Render("q") + descStyle.Render("      Quit"),
+		keyStyle.Render("?") + descStyle.Render("      Toggle this help"),
 		"",
-		"Press Esc or ? to close",
+		mutedStyle.Render("Press Esc or ? to close"),
 	}
 	content := box.Render(lipgloss.JoinVertical(lipgloss.Left, lines...))
 

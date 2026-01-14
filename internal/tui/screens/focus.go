@@ -307,6 +307,8 @@ func (m *FocusModel) handleTimerInput(msg tea.KeyMsg) (FocusModel, tea.Cmd) {
 }
 
 // handleDurationInput handles keyboard input for duration picker.
+// UX: Arrow keys update values immediately (live preview), Tab switches fields,
+// single Enter confirms both values and exits.
 func (m *FocusModel) handleDurationInput(msg tea.KeyMsg) (FocusModel, tea.Cmd) {
 	durations := WorkDurations
 	if !m.selectingWork {
@@ -317,12 +319,16 @@ func (m *FocusModel) handleDurationInput(msg tea.KeyMsg) (FocusModel, tea.Cmd) {
 	case "left", "h":
 		if m.durationIndex > 0 {
 			m.durationIndex--
+			// Live update: immediately apply the selected value
+			m.applySelectedDuration(durations)
 		}
 	case "right", "l":
 		if m.durationIndex < len(durations)-1 {
 			m.durationIndex++
+			// Live update: immediately apply the selected value
+			m.applySelectedDuration(durations)
 		}
-	case "tab":
+	case "tab", "shift+tab":
 		// Switch between work and break duration selection
 		m.selectingWork = !m.selectingWork
 		if m.selectingWork {
@@ -331,20 +337,26 @@ func (m *FocusModel) handleDurationInput(msg tea.KeyMsg) (FocusModel, tea.Cmd) {
 			m.durationIndex = findDurationIndex(m.breakDuration, BreakDurations)
 		}
 	case "enter":
-		// Confirm selection
-		if m.selectingWork {
-			m.workDuration = durations[m.durationIndex]
-			m.remaining = time.Duration(m.workDuration) * time.Minute
-			m.totalDuration = m.remaining
-		} else {
-			m.breakDuration = durations[m.durationIndex]
-		}
+		// Confirm both values and exit to idle
+		// Values are already applied via live update, just exit
 		m.mode = FocusModeIdle
 	case "esc":
+		// Cancel - restore original values would need tracking, for now just exit
 		m.mode = FocusModeIdle
 	}
 
 	return *m, nil
+}
+
+// applySelectedDuration applies the currently selected duration immediately.
+func (m *FocusModel) applySelectedDuration(durations []int) {
+	if m.selectingWork {
+		m.workDuration = durations[m.durationIndex]
+		m.remaining = time.Duration(m.workDuration) * time.Minute
+		m.totalDuration = m.remaining
+	} else {
+		m.breakDuration = durations[m.durationIndex]
+	}
 }
 
 // handleHistoryInput handles keyboard input for history view.
@@ -491,7 +503,7 @@ func (m *FocusModel) renderLargeTimer() string {
 	return largeTimerStyle.Render(timerDisplay)
 }
 
-// renderProgressBar renders a visual progress bar.
+// renderProgressBar renders a visual progress bar with vaporwave gradient.
 func (m *FocusModel) renderProgressBar() string {
 	if m.totalDuration == 0 {
 		return ""
@@ -506,23 +518,10 @@ func (m *FocusModel) renderProgressBar() string {
 		progress = 1
 	}
 
-	width := 30
-	filled := int(float64(width) * progress)
-	empty := width - filled
+	// Use vaporwave progress bar with gradient effect
+	bar := styles.VaporwaveProgressBar(progress, 30)
 
-	filledStr := ""
-	emptyStr := ""
-	for i := 0; i < filled; i++ {
-		filledStr += "█"
-	}
-	for i := 0; i < empty; i++ {
-		emptyStr += "░"
-	}
-
-	bar := styles.ProgressBarFilledStyle.Render(filledStr) +
-		styles.ProgressBarStyle.Render(emptyStr)
-
-	percentageStyle := lipgloss.NewStyle().Foreground(styles.MutedColor)
+	percentageStyle := lipgloss.NewStyle().Foreground(styles.SecondaryColor).Bold(true)
 	percentage := percentageStyle.Render(fmt.Sprintf(" %d%%", int(progress*100)))
 
 	return lipgloss.JoinHorizontal(

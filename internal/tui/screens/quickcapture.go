@@ -17,6 +17,7 @@ import (
 	"github.com/Jericoz-JC/flowState-CLI/internal/models"
 	"github.com/Jericoz-JC/flowState-CLI/internal/storage/sqlite"
 	"github.com/Jericoz-JC/flowState-CLI/internal/tui/components"
+	"github.com/Jericoz-JC/flowState-CLI/internal/tui/styles"
 )
 
 // QuickCaptureModel implements a quick note capture modal.
@@ -175,25 +176,25 @@ func (m *QuickCaptureModel) View() string {
 		return ""
 	}
 
-	// Styles
+	// Styles using ARCHWAVE theme
 	modalStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("#A78BFA")). // Primary violet
+		Border(lipgloss.DoubleBorder()).
+		BorderForeground(styles.AccentColor). // Hot pink
 		Padding(1, 2).
 		Width(m.width - 4)
 
 	titleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#22D3EE")). // Cyan
+		Foreground(styles.SecondaryColor). // Neon cyan
 		Bold(true)
 
 	tipStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#6C7086")).
+		Foreground(styles.MutedColor).
 		Italic(true)
 
 	// Build content
-	title := titleStyle.Render("⚡ Quick Capture")
+	title := titleStyle.Render(styles.DecoStar + " Quick Capture " + styles.DecoStar)
 
-	tips := tipStyle.Render("Tip: First line → title • Use #tags inline • Ctrl+Enter to save")
+	tips := tipStyle.Render("Tip: First line → title • Use #tags inline • Ctrl+S to save")
 
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,

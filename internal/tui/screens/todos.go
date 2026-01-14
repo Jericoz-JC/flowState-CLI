@@ -227,7 +227,7 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			case "enter":
-				// Only save if title input is focused
+				// Only save if title input is focused (allow newlines in description)
 				if m.titleInput.Focused() {
 					title := strings.TrimSpace(m.titleInput.Value())
 					desc := strings.TrimSpace(m.descInput.Value())
@@ -261,8 +261,10 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.descInput.SetValue("")
 						m.LoadTodos()
 					}
+					return m, nil
 				}
-				return m, nil
+				// When description is focused, DON'T return - let Enter pass through
+				// to the textarea for newline handling (falls through to input update below)
 			}
 
 			// Check for cross-platform save shortcut
@@ -512,8 +514,8 @@ func (m *TodosListModel) View() string {
 			filterParts = append(filterParts, "status:"+string(m.statusFilter))
 		}
 		filterStatusStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#F9E2AF")).
-			Background(lipgloss.Color("#2E2E3E")).
+			Foreground(styles.CreamYellow).
+			Background(styles.SurfaceColor).
 			Padding(0, 1)
 		filterStatus = filterStatusStyle.Render("🔎 Filtering: " + strings.Join(filterParts, ", ") + " [Ctrl+R to reset]")
 	}
