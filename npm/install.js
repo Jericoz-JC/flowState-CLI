@@ -6,7 +6,7 @@ const path = require("path");
 const { execSync } = require("child_process");
 const zlib = require("zlib");
 
-const VERSION = "0.1.0";
+const VERSION = "0.1.1";
 const REPO = "Jericoz-JC/flowState-CLI";
 
 // Map Node.js platform/arch to GoReleaser naming

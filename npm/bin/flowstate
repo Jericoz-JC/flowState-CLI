@@ -1,9 +1,23 @@
-#!/bin/sh
-basedir=$(dirname "$(echo "$0" | sed -e 's,\\,/,g')")
+#!/usr/bin/env node
 
-case `uname` in
-    *CYGWIN*|*MINGW*|*MSYS*) basedir=`cygpath -w "$basedir"`;;
-esac
+const { spawn } = require('child_process');
+const path = require('path');
 
-"$basedir/flowstate.exe" "$@" 2>/dev/null || "$basedir/../bin/flowstate" "$@"
+const isWindows = process.platform === 'win32';
+const binDir = __dirname;
+const binaryName = isWindows ? 'flowstate.exe' : 'flowstate';
+const binaryPath = path.join(binDir, binaryName);
 
+const child = spawn(binaryPath, process.argv.slice(2), {
+  stdio: 'inherit',
+  shell: false
+});
+
+child.on('error', (err) => {
+  console.error(`Failed to start flowstate: ${err.message}`);
+  process.exit(1);
+});
+
+child.on('close', (code) => {
+  process.exit(code ?? 0);
+});
