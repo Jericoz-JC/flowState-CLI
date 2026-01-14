@@ -127,6 +127,36 @@ func IsModG(msg tea.KeyMsg) bool {
 	return key == "ctrl+g"
 }
 
+// IsModE checks if the key message is Ctrl+E (or Cmd+E on macOS).
+// Used for toggling markdown preview in notes.
+func IsModE(msg tea.KeyMsg) bool {
+	key := strings.ToLower(msg.String())
+	if IsMacOS() {
+		return key == "cmd+e" || key == "ctrl+e"
+	}
+	return key == "ctrl+e"
+}
+
+// IsModB checks if the key message is Ctrl+B (or Cmd+B on macOS).
+// Used for bold text formatting.
+func IsModB(msg tea.KeyMsg) bool {
+	key := strings.ToLower(msg.String())
+	if IsMacOS() {
+		return key == "cmd+b" || key == "ctrl+b"
+	}
+	return key == "ctrl+b"
+}
+
+// IsModI checks if the key message is Ctrl+I (or Cmd+I on macOS).
+// Used for italic text formatting.
+func IsModI(msg tea.KeyMsg) bool {
+	key := strings.ToLower(msg.String())
+	if IsMacOS() {
+		return key == "cmd+i" || key == "ctrl+i"
+	}
+	return key == "ctrl+i"
+}
+
 // ModKeyDisplay returns the display string for the modifier key.
 // Returns "⌘" on macOS, "Ctrl" on Windows/Linux.
 func ModKeyDisplay() string {

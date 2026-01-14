@@ -1,6 +1,7 @@
 package styles
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -202,6 +203,100 @@ var (
 	// Divider line
 	DividerStyle = lipgloss.NewStyle().
 			Foreground(BorderColor)
+
+	// Card styles for list items (enhanced visual hierarchy)
+	CardStyle = lipgloss.NewStyle().
+			Background(SurfaceColor).
+			Padding(0, 1).
+			MarginBottom(1)
+
+	CardActiveStyle = lipgloss.NewStyle().
+			Background(SurfaceColor).
+			BorderLeft(true).
+			BorderStyle(lipgloss.ThickBorder()).
+			BorderForeground(AccentColor).
+			Padding(0, 1).
+			MarginBottom(1)
+
+	// Badge styles for status indicators
+	BadgeStyle = lipgloss.NewStyle().
+			Foreground(TextColor).
+			Background(BorderColor).
+			Padding(0, 1)
+
+	BadgeSuccessStyle = lipgloss.NewStyle().
+				Foreground(BackgroundColor).
+				Background(SuccessColor).
+				Bold(true).
+				Padding(0, 1)
+
+	BadgeWarningStyle = lipgloss.NewStyle().
+				Foreground(BackgroundColor).
+				Background(WarningColor).
+				Bold(true).
+				Padding(0, 1)
+
+	BadgeErrorStyle = lipgloss.NewStyle().
+			Foreground(BackgroundColor).
+			Background(ErrorColor).
+			Bold(true).
+			Padding(0, 1)
+
+	BadgeInfoStyle = lipgloss.NewStyle().
+			Foreground(BackgroundColor).
+			Background(SecondaryColor).
+			Bold(true).
+			Padding(0, 1)
+
+	// Section header style with decorative line
+	SectionHeaderStyle = lipgloss.NewStyle().
+				Foreground(PrimaryColor).
+				Bold(true).
+				BorderBottom(true).
+				BorderStyle(lipgloss.NormalBorder()).
+				BorderForeground(BorderColor).
+				MarginBottom(1).
+				PaddingBottom(0)
+
+	// Muted card for completed/inactive items
+	CardMutedStyle = lipgloss.NewStyle().
+			Foreground(MutedColor).
+			Background(BackgroundColor).
+			Padding(0, 1).
+			MarginBottom(1)
+
+	// Highlight box for important messages
+	HighlightBoxStyle = lipgloss.NewStyle().
+				Foreground(TextColor).
+				Background(SurfaceColor).
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(AccentColor).
+				Padding(1, 2)
+
+	// Empty state style
+	EmptyStateStyle = lipgloss.NewStyle().
+			Foreground(MutedColor).
+			Align(lipgloss.Center).
+			Italic(true).
+			Padding(2, 4)
+
+	// Count badge (for item counts in headers)
+	CountBadgeStyle = lipgloss.NewStyle().
+			Foreground(SecondaryColor).
+			Background(SurfaceColor).
+			Padding(0, 1).
+			Bold(true)
+
+	// Inline link style
+	LinkStyle = lipgloss.NewStyle().
+			Foreground(SecondaryColor).
+			Underline(true)
+
+	// Code/monospace style
+	CodeStyle = lipgloss.NewStyle().
+			Foreground(PaleAqua).
+			Background(SurfaceColor).
+			Padding(0, 1)
 )
 
 // Helper function to create a full-screen container
@@ -293,4 +388,59 @@ func VaporwaveDivider(width int) string {
 func VaporwaveSeparator() string {
 	sepStyle := lipgloss.NewStyle().Foreground(BorderColor)
 	return sepStyle.Render(" " + DecoBullet + " ")
+}
+
+// StatusBadge returns a styled badge based on status type
+func StatusBadge(status string) string {
+	switch status {
+	case "completed", "done", "success":
+		return BadgeSuccessStyle.Render(" ✓ " + status + " ")
+	case "pending", "todo":
+		return BadgeStyle.Render(" ○ " + status + " ")
+	case "in_progress", "active":
+		return BadgeWarningStyle.Render(" ▶ " + status + " ")
+	case "error", "failed":
+		return BadgeErrorStyle.Render(" ✕ " + status + " ")
+	default:
+		return BadgeInfoStyle.Render(" " + status + " ")
+	}
+}
+
+// SectionHeader renders a styled section header with optional count
+func SectionHeader(title string, count int) string {
+	countStr := ""
+	if count >= 0 {
+		countStr = " " + CountBadgeStyle.Render(strconv.Itoa(count))
+	}
+	return SectionHeaderStyle.Render(title + countStr)
+}
+
+// HighlightBox renders text in a highlighted box
+func HighlightBox(text string) string {
+	return HighlightBoxStyle.Render(text)
+}
+
+// EmptyState renders a centered empty state message
+func EmptyState(message string) string {
+	return EmptyStateStyle.Render(DecoStar + " " + message + " " + DecoStar)
+}
+
+// FormatTag renders a tag with proper styling
+func FormatTag(tag string) string {
+	return TagStyle.Render("#" + tag)
+}
+
+// FormatTags renders multiple tags with proper styling
+func FormatTags(tags []string) string {
+	if len(tags) == 0 {
+		return ""
+	}
+	var result strings.Builder
+	for i, tag := range tags {
+		if i > 0 {
+			result.WriteString(" ")
+		}
+		result.WriteString(FormatTag(tag))
+	}
+	return result.String()
 }

@@ -172,16 +172,16 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// Handle filter input
+		// Handle filter input with search-as-you-type
 		if m.showFilter {
 			switch msg.String() {
 			case "enter":
-				m.filter = m.filterInput.Value()
+				// Enter closes filter but keeps the filter value
 				m.showFilter = false
 				m.filterInput.Blur()
-				m.LoadTodos()
 				return m, nil
 			case "esc":
+				// Esc clears filter and closes
 				m.showFilter = false
 				m.filter = ""
 				m.filterInput.SetValue("")
@@ -191,6 +191,9 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			default:
 				var cmd tea.Cmd
 				m.filterInput, cmd = m.filterInput.Update(msg)
+				// Search-as-you-type: update filter and reload on every keystroke
+				m.filter = m.filterInput.Value()
+				m.LoadTodos()
 				cmds = append(cmds, cmd)
 				return m, tea.Batch(cmds...)
 			}
@@ -491,13 +494,27 @@ func (m *TodosListModel) View() string {
 
 	// Update help hints to include filter (with platform-appropriate mod key)
 	mod := keymap.ModKeyDisplay()
+
+	// Get current status filter display
+	var statusDesc string
+	switch m.statusFilter {
+	case "":
+		statusDesc = "All"
+	case models.TodoStatusPending:
+		statusDesc = "Pending"
+	case models.TodoStatusInProgress:
+		statusDesc = "In Prog"
+	case models.TodoStatusCompleted:
+		statusDesc = "Done"
+	}
+
 	listHints := []components.HelpHint{
 		{Key: "c", Description: "Create", Primary: true},
 		{Key: "e", Description: "Edit"},
 		{Key: "d", Description: "Delete"},
 		{Key: "Space", Description: "Toggle"},
 		{Key: "/", Description: "Filter"},
-		{Key: "f", Description: "Status Filter"},
+		{Key: "f", Description: "Status:" + statusDesc},
 		{Key: mod + "+L", Description: "Link"},
 		{Key: mod + "+H", Description: "Home"},
 	}

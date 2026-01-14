@@ -9,6 +9,7 @@ package screens
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -44,6 +45,15 @@ import (
 // Keyboard Shortcuts (when creating/editing):
 //   - enter: Save and return to list
 //   - esc: Cancel and return to list
+// SortMode defines how notes are sorted
+type SortMode int
+
+const (
+	SortByDate SortMode = iota // Default: newest first
+	SortByTitle                // Alphabetical by title
+	SortByDateAsc              // Oldest first
+)
+
 type NotesListModel struct {
 	list             list.Model
 	store            *sqlite.Store
@@ -51,10 +61,12 @@ type NotesListModel struct {
 	filterInput      components.TextInputModel
 	showFilter       bool
 	selectedTags     []string // Tags to filter by
+	sortMode         SortMode // Current sort mode
 	showCreate       bool
-	showPreview      bool         // Preview mode (read-only markdown)
+	showPreview      bool         // Preview mode (read-only markdown from list)
 	previewNote      *models.Note // Note being previewed
 	editingID        int64        // 0 = creating new, >0 = editing existing
+	editPreview      bool         // Toggle preview while editing (Ctrl+E)
 	confirmingDelete bool
 	deleteTargetID   int64
 	titleInput       components.TextInputModel
@@ -179,6 +191,25 @@ func (m *NotesListModel) LoadNotes() error {
 		filtered = append(filtered, note)
 	}
 
+	// Apply sort based on sortMode
+	switch m.sortMode {
+	case SortByDate:
+		// Newest first (default)
+		sort.Slice(filtered, func(i, j int) bool {
+			return filtered[i].UpdatedAt.After(filtered[j].UpdatedAt)
+		})
+	case SortByTitle:
+		// Alphabetical by title
+		sort.Slice(filtered, func(i, j int) bool {
+			return strings.ToLower(filtered[i].Title) < strings.ToLower(filtered[j].Title)
+		})
+	case SortByDateAsc:
+		// Oldest first
+		sort.Slice(filtered, func(i, j int) bool {
+			return filtered[i].UpdatedAt.Before(filtered[j].UpdatedAt)
+		})
+	}
+
 	items := make([]list.Item, 0, len(filtered))
 	for _, note := range filtered {
 		items = append(items, NoteItem{note: note})
@@ -200,16 +231,16 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// Handle filter input
+		// Handle filter input with search-as-you-type
 		if m.showFilter {
 			switch msg.String() {
 			case "enter":
-				m.filter = m.filterInput.Value()
+				// Enter closes filter but keeps the filter value
 				m.showFilter = false
 				m.filterInput.Blur()
-				m.LoadNotes()
 				return m, nil
 			case "esc":
+				// Esc clears filter and closes
 				m.showFilter = false
 				m.filter = ""
 				m.filterInput.SetValue("")
@@ -219,6 +250,9 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			default:
 				var cmd tea.Cmd
 				m.filterInput, cmd = m.filterInput.Update(msg)
+				// Search-as-you-type: update filter and reload on every keystroke
+				m.filter = m.filterInput.Value()
+				m.LoadNotes()
 				cmds = append(cmds, cmd)
 				return m, tea.Batch(cmds...)
 			}
@@ -368,9 +402,31 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
+			// Toggle markdown preview while editing (Ctrl+E)
+			if keymap.IsModE(msg) {
+				m.editPreview = !m.editPreview
+				return m, nil
+			}
+
+			// Bold formatting (Ctrl+B) - wrap selection with **
+			if keymap.IsModB(msg) && m.bodyInput.Focused() {
+				current := m.bodyInput.Value()
+				m.bodyInput.SetValue(current + "****")
+				// Move cursor back 2 positions (TODO: proper cursor handling)
+				return m, nil
+			}
+
+			// Italic formatting (Ctrl+I) - wrap selection with *
+			if keymap.IsModI(msg) && m.bodyInput.Focused() {
+				current := m.bodyInput.Value()
+				m.bodyInput.SetValue(current + "**")
+				return m, nil
+			}
+
 			if msg.String() == "esc" {
 				m.showCreate = false
 				m.editingID = 0
+				m.editPreview = false
 				m.titleInput.SetValue("")
 				m.bodyInput.SetValue("")
 				return m, nil
@@ -420,6 +476,18 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
+			return m, nil
+		case "s":
+			// Cycle through sort modes: Date (newest) -> Title -> Date (oldest) -> Date (newest)
+			switch m.sortMode {
+			case SortByDate:
+				m.sortMode = SortByTitle
+			case SortByTitle:
+				m.sortMode = SortByDateAsc
+			case SortByDateAsc:
+				m.sortMode = SortByDate
+			}
+			m.LoadNotes()
 			return m, nil
 		case "c":
 			m.showCreate = true
@@ -527,7 +595,55 @@ func (m *NotesListModel) View() string {
 	}
 
 	if m.showCreate {
-		m.helpBar.SetHints(components.NotesEditHints)
+		mod := keymap.ModKeyDisplay()
+
+		// Dynamic title for create vs edit
+		formTitle := "📝 Create Note"
+		if m.editingID > 0 {
+			formTitle = "📝 Edit Note"
+		}
+
+		// Show preview mode when toggled
+		if m.editPreview {
+			// Preview hints
+			previewHints := []components.HelpHint{
+				{Key: mod + "+E", Description: "Edit", Primary: true},
+				{Key: mod + "+S", Description: "Save"},
+				{Key: "Esc", Description: "Cancel"},
+			}
+			m.helpBar.SetHints(previewHints)
+
+			// Render markdown preview
+			previewTitle := styles.TitleStyle.Render(formTitle + " (Preview)")
+			titlePreview := styles.SelectedItemStyle.Render("# " + m.titleInput.Value())
+
+			// Simple markdown rendering for preview
+			bodyContent := m.bodyInput.Value()
+			renderedBody := m.renderMarkdownPreview(bodyContent)
+
+			form := lipgloss.JoinVertical(
+				lipgloss.Left,
+				previewTitle,
+				"",
+				titlePreview,
+				"",
+				renderedBody,
+				"",
+				m.helpBar.View(),
+			)
+			return styles.PanelStyle.Render(form)
+		}
+
+		// Edit mode hints with preview toggle
+		editHints := []components.HelpHint{
+			{Key: mod + "+E", Description: "Preview"},
+			{Key: "Tab", Description: "Switch Field"},
+			{Key: mod + "+S", Description: "Save", Primary: true},
+			{Key: mod + "+B", Description: "Bold"},
+			{Key: mod + "+I", Description: "Italic"},
+			{Key: "Esc", Description: "Cancel"},
+		}
+		m.helpBar.SetHints(editHints)
 
 		// Show which field is focused
 		titleLabel := styles.SubtitleStyle.Render("Title")
@@ -536,12 +652,6 @@ func (m *NotesListModel) View() string {
 			titleLabel = styles.SelectedItemStyle.Render("▶ Title")
 		} else {
 			bodyLabel = styles.SelectedItemStyle.Render("▶ Body (use #tags and [[links]])")
-		}
-
-		// Dynamic title for create vs edit
-		formTitle := "📝 Create Note"
-		if m.editingID > 0 {
-			formTitle = "📝 Edit Note"
 		}
 
 		form := lipgloss.JoinVertical(
@@ -564,14 +674,26 @@ func (m *NotesListModel) View() string {
 
 	// Update help hints to include preview and filter (with platform-appropriate mod key)
 	mod := keymap.ModKeyDisplay()
+
+	// Get current sort mode display
+	var sortDesc string
+	switch m.sortMode {
+	case SortByDate:
+		sortDesc = "Date↓"
+	case SortByTitle:
+		sortDesc = "Title"
+	case SortByDateAsc:
+		sortDesc = "Date↑"
+	}
+
 	listHints := []components.HelpHint{
 		{Key: "c", Description: "Create", Primary: true},
 		{Key: "e", Description: "Edit"},
 		{Key: "p", Description: "Preview"},
 		{Key: "d", Description: "Delete"},
 		{Key: "/", Description: "Filter"},
-		{Key: "t", Description: "Tag Filter"},
-		{Key: mod + "+L", Description: "Link"},
+		{Key: "s", Description: "Sort:" + sortDesc},
+		{Key: "t", Description: "Tag"},
 		{Key: mod + "+H", Description: "Home"},
 	}
 	m.helpBar.SetHints(listHints)
@@ -742,6 +864,148 @@ func (m *NotesListModel) renderPreview() string {
 	)
 
 	return styles.PanelStyle.Render(content)
+}
+
+// renderMarkdownPreview renders simple markdown formatting for the edit preview.
+func (m *NotesListModel) renderMarkdownPreview(text string) string {
+	if text == "" {
+		mutedStyle := lipgloss.NewStyle().Foreground(styles.MutedColor)
+		return mutedStyle.Render("(empty)")
+	}
+
+	// Style definitions
+	headerStyle := lipgloss.NewStyle().
+		Foreground(styles.PrimaryColor).
+		Bold(true)
+
+	boldStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(styles.TextColor)
+
+	italicStyle := lipgloss.NewStyle().
+		Italic(true).
+		Foreground(styles.TextColor)
+
+	codeStyle := lipgloss.NewStyle().
+		Background(styles.SurfaceColor).
+		Foreground(styles.SecondaryColor).
+		Padding(0, 1)
+
+	tagStyle := lipgloss.NewStyle().
+		Foreground(styles.AccentColor)
+
+	wikilinkStyle := lipgloss.NewStyle().
+		Foreground(styles.SecondaryColor).
+		Underline(true)
+
+	listStyle := lipgloss.NewStyle().
+		Foreground(styles.TextColor).
+		PaddingLeft(2)
+
+	checkboxDoneStyle := lipgloss.NewStyle().
+		Foreground(styles.SuccessColor)
+
+	checkboxStyle := lipgloss.NewStyle().
+		Foreground(styles.MutedColor)
+
+	// Process line by line
+	lines := strings.Split(text, "\n")
+	var renderedLines []string
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		// Headers
+		if strings.HasPrefix(trimmed, "### ") {
+			renderedLines = append(renderedLines, headerStyle.Render("   "+trimmed[4:]))
+			continue
+		}
+		if strings.HasPrefix(trimmed, "## ") {
+			renderedLines = append(renderedLines, headerStyle.Render("  "+trimmed[3:]))
+			continue
+		}
+		if strings.HasPrefix(trimmed, "# ") {
+			renderedLines = append(renderedLines, headerStyle.Render(trimmed[2:]))
+			continue
+		}
+
+		// Checkboxes
+		if strings.HasPrefix(trimmed, "- [x] ") || strings.HasPrefix(trimmed, "- [X] ") {
+			renderedLines = append(renderedLines, checkboxDoneStyle.Render("  ✓ "+trimmed[6:]))
+			continue
+		}
+		if strings.HasPrefix(trimmed, "- [ ] ") {
+			renderedLines = append(renderedLines, checkboxStyle.Render("  ☐ "+trimmed[6:]))
+			continue
+		}
+
+		// Bullet lists
+		if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") {
+			renderedLines = append(renderedLines, listStyle.Render("• "+trimmed[2:]))
+			continue
+		}
+
+		// Process inline formatting
+		rendered := line
+
+		// Bold (**text**)
+		for {
+			start := strings.Index(rendered, "**")
+			if start == -1 {
+				break
+			}
+			end := strings.Index(rendered[start+2:], "**")
+			if end == -1 {
+				break
+			}
+			boldText := rendered[start+2 : start+2+end]
+			rendered = rendered[:start] + boldStyle.Render(boldText) + rendered[start+2+end+2:]
+		}
+
+		// Italic (*text*)
+		for {
+			start := strings.Index(rendered, "*")
+			if start == -1 {
+				break
+			}
+			end := strings.Index(rendered[start+1:], "*")
+			if end == -1 {
+				break
+			}
+			italicText := rendered[start+1 : start+1+end]
+			rendered = rendered[:start] + italicStyle.Render(italicText) + rendered[start+1+end+1:]
+		}
+
+		// Inline code (`code`)
+		for {
+			start := strings.Index(rendered, "`")
+			if start == -1 {
+				break
+			}
+			end := strings.Index(rendered[start+1:], "`")
+			if end == -1 {
+				break
+			}
+			codeText := rendered[start+1 : start+1+end]
+			rendered = rendered[:start] + codeStyle.Render(codeText) + rendered[start+1+end+1:]
+		}
+
+		// Tags (#tag)
+		words := strings.Fields(rendered)
+		for i, word := range words {
+			if strings.HasPrefix(word, "#") && len(word) > 1 {
+				words[i] = tagStyle.Render(word)
+			}
+		}
+		rendered = strings.Join(words, " ")
+
+		// Wikilinks ([[link]])
+		rendered = highlightWikilinks(rendered, wikilinkStyle)
+
+		renderedLines = append(renderedLines, rendered)
+	}
+
+	return strings.Join(renderedLines, "\n")
 }
 
 // highlightWikilinks finds [[text]] patterns and highlights them.
