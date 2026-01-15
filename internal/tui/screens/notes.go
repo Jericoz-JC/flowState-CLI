@@ -273,6 +273,7 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.editingID = m.previewNote.ID
 					m.titleInput.SetValue(m.previewNote.Title)
 					m.bodyInput.SetValue(m.previewNote.Body)
+					m.bodyInput.Blur()
 					m.titleInput.Focus()
 					m.previewNote = nil
 				}
@@ -300,9 +301,8 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Handle keys when in create/edit mode
 		if m.showCreate {
-			switch msg.String() {
-			case "tab", "shift+tab":
-				// Toggle focus between title and body
+			// Handle tab to switch between fields
+			if msg.String() == "tab" || msg.String() == "shift+tab" {
 				if m.titleInput.Focused() {
 					m.titleInput.Blur()
 					m.bodyInput.Focus()
@@ -311,51 +311,50 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.titleInput.Focus()
 				}
 				return m, nil
-			case "enter":
-				// Only save if title input is focused (allow newlines in body)
-				if m.titleInput.Focused() {
-					title := strings.TrimSpace(m.titleInput.Value())
-					body := strings.TrimSpace(m.bodyInput.Value())
-					if title != "" {
-						tags := extractTags(body)
-						wikilinks := parseWikilinks(body)
+			}
 
-						if m.editingID > 0 {
-							// Update existing note
-							note := &models.Note{
-								ID:    m.editingID,
-								Title: title,
-								Body:  body,
-								Tags:  tags,
-							}
-							if err := m.store.UpdateNote(note); err != nil {
-								return m, nil
-							}
-							// Create wikilinks
-							m.createWikilinks(note.ID, wikilinks)
-						} else {
-							// Create new note
-							note := &models.Note{
-								Title: title,
-								Body:  body,
-								Tags:  tags,
-							}
-							if err := m.store.CreateNote(note); err != nil {
-								return m, nil
-							}
-							// Create wikilinks
-							m.createWikilinks(note.ID, wikilinks)
+			// Handle enter only when title is focused (to save)
+			// When body is focused, let enter pass through to textarea for newlines
+			if msg.String() == "enter" && m.titleInput.Focused() {
+				title := strings.TrimSpace(m.titleInput.Value())
+				body := strings.TrimSpace(m.bodyInput.Value())
+				if title != "" {
+					tags := extractTags(body)
+					wikilinks := parseWikilinks(body)
+
+					if m.editingID > 0 {
+						// Update existing note
+						note := &models.Note{
+							ID:    m.editingID,
+							Title: title,
+							Body:  body,
+							Tags:  tags,
 						}
-						m.showCreate = false
-						m.editingID = 0
-						m.titleInput.SetValue("")
-						m.bodyInput.SetValue("")
-						m.LoadNotes()
+						if err := m.store.UpdateNote(note); err != nil {
+							return m, nil
+						}
+						// Create wikilinks
+						m.createWikilinks(note.ID, wikilinks)
+					} else {
+						// Create new note
+						note := &models.Note{
+							Title: title,
+							Body:  body,
+							Tags:  tags,
+						}
+						if err := m.store.CreateNote(note); err != nil {
+							return m, nil
+						}
+						// Create wikilinks
+						m.createWikilinks(note.ID, wikilinks)
 					}
-					return m, nil
+					m.showCreate = false
+					m.editingID = 0
+					m.titleInput.SetValue("")
+					m.bodyInput.SetValue("")
+					m.LoadNotes()
 				}
-				// When body is focused, DON'T return - let Enter pass through
-				// to the textarea for newline handling (falls through to input update below)
+				return m, nil
 			}
 
 			// Check for cross-platform save shortcut
@@ -645,27 +644,45 @@ func (m *NotesListModel) View() string {
 		}
 		m.helpBar.SetHints(editHints)
 
-		// Show which field is focused
-		titleLabel := styles.SubtitleStyle.Render("Title")
-		bodyLabel := styles.SubtitleStyle.Render("Body (use #tags and [[links]])")
+		// Show different layouts based on which field is focused
+		var form string
 		if m.titleInput.Focused() {
-			titleLabel = styles.SelectedItemStyle.Render("▶ Title")
-		} else {
-			bodyLabel = styles.SelectedItemStyle.Render("▶ Body (use #tags and [[links]])")
-		}
+			// Title is focused: show full form with labels
+			titleLabel := styles.SelectedItemStyle.Render("▶ Title")
+			bodyLabel := styles.SubtitleStyle.Render("Body (use #tags and [[links]])")
 
-		form := lipgloss.JoinVertical(
-			lipgloss.Left,
-			styles.TitleStyle.Render(formTitle),
-			"",
-			titleLabel,
-			m.titleInput.View(),
-			"",
-			bodyLabel,
-			m.bodyInput.View(),
-			"",
-			m.helpBar.View(),
-		)
+			form = lipgloss.JoinVertical(
+				lipgloss.Left,
+				styles.TitleStyle.Render(formTitle),
+				"",
+				titleLabel,
+				m.titleInput.View(),
+				"",
+				bodyLabel,
+				m.bodyInput.View(),
+				"",
+				m.helpBar.View(),
+			)
+		} else {
+			// Body is focused: show title as inline header, hide title input
+			titleDisplay := styles.TitleStyle.Render(m.titleInput.Value())
+			if m.titleInput.Value() == "" {
+				titleDisplay = styles.SubtitleStyle.Render("(Untitled)")
+			}
+			bodyLabel := styles.SelectedItemStyle.Render("▶ Body (use #tags and [[links]])")
+
+			form = lipgloss.JoinVertical(
+				lipgloss.Left,
+				styles.TitleStyle.Render(formTitle),
+				"",
+				titleDisplay,
+				"",
+				bodyLabel,
+				m.bodyInput.View(),
+				"",
+				m.helpBar.View(),
+			)
+		}
 		return styles.PanelStyle.Render(form)
 	}
 

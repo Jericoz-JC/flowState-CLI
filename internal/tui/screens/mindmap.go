@@ -10,6 +10,7 @@ import (
 	"github.com/Jericoz-JC/flowState-CLI/internal/graph"
 	"github.com/Jericoz-JC/flowState-CLI/internal/storage/sqlite"
 	"github.com/Jericoz-JC/flowState-CLI/internal/tui/components"
+	"github.com/Jericoz-JC/flowState-CLI/internal/tui/styles"
 )
 
 type MindMapModel struct {
@@ -22,6 +23,7 @@ type MindMapModel struct {
 
 	selected int
 	zoom     int
+	showHelp bool // Help modal state
 
 	header  components.Header
 	helpBar components.HelpBar
@@ -89,7 +91,17 @@ func (m *MindMapModel) LoadGraph() error {
 func (m *MindMapModel) Update(msg tea.Msg) (MindMapModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Handle help modal
+		if m.showHelp {
+			// Any key closes help
+			m.showHelp = false
+			return *m, nil
+		}
+
 		switch msg.String() {
+		case "?":
+			m.showHelp = true
+			return *m, nil
 		case "+", "=":
 			if m.zoom < 3 {
 				m.zoom++
@@ -135,6 +147,11 @@ func (m *MindMapModel) Update(msg tea.Msg) (MindMapModel, tea.Cmd) {
 func (m *MindMapModel) View() string {
 	panel := lipgloss.NewStyle().Padding(1, 2).Width(m.width).Height(m.height)
 
+	// Show help modal if active
+	if m.showHelp {
+		return panel.Render(m.helpView())
+	}
+
 	canvasW, canvasH := m.canvasSize()
 
 	// Mark selected node with a distinct color (ARCHWAVE neon cyan).
@@ -153,6 +170,41 @@ func (m *MindMapModel) View() string {
 		m.helpBar.View(),
 	)
 	return panel.Render(content)
+}
+
+func (m *MindMapModel) helpView() string {
+	title := styles.TitleStyle.Render("🧠 MIND MAP - Help")
+
+	helpText := `The Mind Map visualizes your notes and their connections as an interactive graph.
+
+` + styles.SelectedItemStyle.Render("Navigation:") + `
+• ` + styles.NeonStyle.Render("h/j/k/l") + ` or Arrow Keys: Pan the view
+• ` + styles.NeonStyle.Render("+/-") + ` or Scroll: Zoom in/out
+• ` + styles.NeonStyle.Render("Enter") + `: Open the selected note
+• ` + styles.NeonStyle.Render("Esc") + `: Return to notes list
+
+` + styles.SelectedItemStyle.Render("Visual Elements:") + `
+• ` + styles.NeonStyle.Render("Nodes") + `: Each note appears as a node
+• ` + styles.NeonStyle.Render("Edges") + `: Lines connect linked notes
+• ` + styles.NeonStyle.Render("Colors") + `: Nodes are colored by tag
+• ` + styles.NeonStyle.Render("Size") + `: Node size reflects connection count
+
+` + styles.SelectedItemStyle.Render("Tips:") + `
+• Notes with more links appear larger
+• Cyan highlight shows current selection
+• Clusters indicate related topics
+• Use zoom to see more detail`
+
+	help := styles.HelpStyle.Render("Press any key to close")
+
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		"",
+		helpText,
+		"",
+		help,
+	)
 }
 
 func (m *MindMapModel) canvasSize() (int, int) {

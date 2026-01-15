@@ -45,6 +45,11 @@ type tickMsg time.Time
 // clearFeedbackMsg is sent to clear the "Saved" indicator after a delay.
 type clearFeedbackMsg struct{}
 
+// autoExitDurationMsg is sent to auto-exit the duration picker after selection.
+type autoExitDurationMsg struct {
+	sequence int // Used to cancel stale auto-exit timers
+}
+
 // FocusModel implements the focus session screen.
 //
 // Phase 5: Focus Sessions
@@ -78,10 +83,11 @@ type FocusModel struct {
 	width          int
 	height         int
 	// Duration picker state
-	durationIndex       int       // Currently selected duration preset
-	selectingWork       bool      // true = selecting work duration, false = break duration
-	durationJustChanged bool      // Show "Saved" indicator briefly
-	lastChangedField    string    // "work" or "break" - which field was just changed
+	durationIndex       int    // Currently selected duration preset
+	selectingWork       bool   // true = selecting work duration, false = break duration
+	durationJustChanged bool   // Show "Saved" indicator briefly
+	lastChangedField    string // "work" or "break" - which field was just changed
+	autoExitSequence    int    // Sequence number for auto-exit timer cancellation
 }
 
 // NewFocusModel creates a new focus session screen.
@@ -171,6 +177,15 @@ func (m *FocusModel) Update(msg tea.Msg) (FocusModel, tea.Cmd) {
 		// Clear the "Saved" indicator
 		m.durationJustChanged = false
 		m.lastChangedField = ""
+		return *m, nil
+
+	case autoExitDurationMsg:
+		// Auto-exit duration picker if sequence matches (not cancelled by new input)
+		if m.mode == FocusModeDuration && msg.sequence == m.autoExitSequence {
+			m.mode = FocusModeIdle
+			m.durationJustChanged = false
+			m.lastChangedField = ""
+		}
 		return *m, nil
 
 	case tea.KeyMsg:
@@ -364,7 +379,7 @@ func (m *FocusModel) handleDurationInput(msg tea.KeyMsg) (FocusModel, tea.Cmd) {
 }
 
 // applySelectedDuration applies the currently selected duration immediately.
-// Returns a command to clear the feedback indicator after 800ms.
+// Returns commands to show feedback briefly and auto-exit after 500ms.
 func (m *FocusModel) applySelectedDuration(durations []int) tea.Cmd {
 	if m.selectingWork {
 		m.workDuration = durations[m.durationIndex]
@@ -379,10 +394,19 @@ func (m *FocusModel) applySelectedDuration(durations []int) tea.Cmd {
 	// Show "Saved" indicator
 	m.durationJustChanged = true
 
-	// Return command to clear feedback after delay
-	return tea.Tick(800*time.Millisecond, func(t time.Time) tea.Msg {
-		return clearFeedbackMsg{}
-	})
+	// Increment sequence to cancel any pending auto-exit timers
+	m.autoExitSequence++
+	currentSequence := m.autoExitSequence
+
+	// Return commands: clear feedback after 300ms, auto-exit after 500ms
+	return tea.Batch(
+		tea.Tick(300*time.Millisecond, func(t time.Time) tea.Msg {
+			return clearFeedbackMsg{}
+		}),
+		tea.Tick(500*time.Millisecond, func(t time.Time) tea.Msg {
+			return autoExitDurationMsg{sequence: currentSequence}
+		}),
+	)
 }
 
 // handleHistoryInput handles keyboard input for history view.

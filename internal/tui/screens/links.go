@@ -28,6 +28,7 @@ const (
 	LinkModeSelectType
 	LinkModeSelectTarget
 	LinkModeViewLinks
+	LinkModeHelp // Help modal
 )
 
 // LinkModel implements the link creation and management modal.
@@ -186,10 +187,18 @@ func (m *LinkModel) Update(msg tea.Msg) (LinkModel, tea.Cmd) {
 					}
 				}
 				return *m, nil
+			case "?": // Show help
+				m.mode = LinkModeHelp
+				return *m, nil
 			}
 			var cmd tea.Cmd
 			m.linkList, cmd = m.linkList.Update(msg)
 			return *m, cmd
+
+		case LinkModeHelp:
+			// Any key closes help
+			m.mode = LinkModeViewLinks
+			return *m, nil
 
 		case LinkModeSelectType:
 			switch msg.String() {
@@ -260,6 +269,8 @@ func (m *LinkModel) View() string {
 		content = m.selectTypeView()
 	case LinkModeSelectTarget:
 		content = m.selectTargetView()
+	case LinkModeHelp:
+		content = m.helpView()
 	}
 
 	return styles.PanelActiveStyle.Render(content)
@@ -278,6 +289,7 @@ func (m *LinkModel) viewLinksView() string {
 	help := styles.HelpStyle.Render(
 		styles.KeyHint("c", "Create link") + " • " +
 			styles.KeyHint("d", "Delete") + " • " +
+			styles.KeyHint("?", "Help") + " • " +
 			styles.KeyHint("Esc", "Close"),
 	)
 
@@ -357,6 +369,43 @@ func (m *LinkModel) selectTargetView() string {
 		subtitle,
 		"",
 		targetContent,
+		"",
+		help,
+	)
+}
+
+func (m *LinkModel) helpView() string {
+	title := styles.TitleStyle.Render("📎 LINKS - Help")
+
+	helpText := `Links connect your notes and todos together, creating a knowledge graph.
+
+` + styles.SelectedItemStyle.Render("Types of Links:") + `
+• ` + styles.NeonStyle.Render("Wikilinks") + `: Use [[Note Title]] in any note body to create a link
+• ` + styles.NeonStyle.Render("Manual Links") + `: Press Ctrl+L on a todo to link it to a note
+• ` + styles.NeonStyle.Render("Backlinks") + `: See what links TO the current item
+
+` + styles.SelectedItemStyle.Render("How Links Work:") + `
+• Links are bidirectional - if Note A links to Note B, Note B shows a backlink
+• Links update automatically when you rename items
+• Delete a link by removing the [[wikilink]] text or pressing 'd' in link view
+
+` + styles.SelectedItemStyle.Render("Link Types:") + `
+• ` + styles.NeonStyle.Render("Related") + `: General connection between items
+• ` + styles.NeonStyle.Render("Contains") + `: Parent/child relationship
+• ` + styles.NeonStyle.Render("References") + `: One-way citation or reference
+
+` + styles.SelectedItemStyle.Render("Use Cases:") + `
+• Connect related project notes
+• Link todos to their parent project note
+• Build a personal knowledge base`
+
+	help := styles.HelpStyle.Render("Press any key to close")
+
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		"",
+		helpText,
 		"",
 		help,
 	)

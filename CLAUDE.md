@@ -2,10 +2,10 @@
 
 > This file tracks the current development plan and progress. Updated after each phase completion.
 
-## Current Status: Phase 3 Complete, v0.1.6 Released
+## Current Status: Phase 4 Complete, Ready for v0.1.7 Release
 **Last Updated:** January 14, 2026
 **Current Version:** v0.1.6
-**Next Target:** v0.1.7
+**Next Target:** v0.1.7 (implementation complete, needs release)
 
 ---
 
@@ -16,9 +16,10 @@
 | v0.1.4 | 1 | ✅ Complete | NPM Package Fix |
 | v0.1.5 | 2 | ✅ Complete | Focus Timer UX Enhancement |
 | v0.1.6 | 3 | ✅ Complete | Todos Notion-Inspired Overhaul |
-| v0.1.7 | 4 | 🔄 Next | Focus Screen Visual Overhaul |
-| v0.1.8 | 5 | ⏳ Pending | Unified Theme & Design System |
-| v0.2.0 | 6 | ⏳ Pending | Final Polish & Documentation |
+| v0.1.7 | 4 | ✅ Complete | Bug Fixes & UX Polish |
+| v0.1.8 | 5 | 🔄 Next | Focus Screen Visual Overhaul |
+| v0.1.9 | 6 | ⏳ Pending | Unified Theme & Design System |
+| v0.2.0 | 7 | ⏳ Pending | Final Polish & Documentation |
 
 ---
 
@@ -95,8 +96,53 @@
 
 ---
 
-## Phase 4: Focus Screen Visual Overhaul
-**Version:** v0.1.7 | **Status:** Pending
+## Phase 4: Bug Fixes & UX Polish ✅
+**Version:** v0.1.7 | **Status:** Complete
+
+### Changes Made
+
+#### Focus Timer Duration Picker Auto-Exit
+- Added `autoExitDurationMsg` message type with sequence number for cancellation
+- Added `autoExitSequence` field to FocusModel to track timer cancellation
+- Modified `applySelectedDuration()` to schedule auto-exit after 500ms
+- Duration picker now auto-exits after arrow key selection
+
+#### Notes Preview Edit Shortcut Fix
+- Added explicit `m.bodyInput.Blur()` call when entering edit from preview
+- Ensures proper focus state when transitioning from preview to edit mode
+
+#### Notes Edit Mode Label Cleanup
+- When body is focused, title is now displayed as styled header text
+- Title input and label are hidden, showing just the title value
+- Shows "(Untitled)" if title is empty
+
+#### Notes Body Enter Key Fix
+- Restructured key handling from switch/case to if statements
+- Enter now only triggers save when title is focused
+- When body is focused, Enter passes through to textarea for newlines
+
+#### Help Modal for Links & Mind Map (? Shortcut)
+- Added `LinkModeHelp` mode to links.go with full help content
+- Added `showHelp bool` to MindMapModel with help view
+- '?' key opens contextual help in both screens
+- Any key closes the help modal
+- Updated `LinksHints` and `MindMapHints` to include '?' hint
+
+### Files Modified
+- `internal/tui/screens/focus.go` - Auto-exit timer implementation
+- `internal/tui/screens/notes.go` - Preview 'e' fix, title label cleanup, Enter key fix
+- `internal/tui/screens/links.go` - Help modal for Links
+- `internal/tui/screens/mindmap.go` - Help modal for Mind Map
+- `internal/tui/components/helpbar.go` - Added '?' hints
+
+### Tests
+- All existing tests pass
+- Build succeeds with no errors
+
+---
+
+## Phase 5: Focus Screen Visual Overhaul
+**Version:** v0.1.8 | **Status:** Pending
 
 ### Enhanced Timer Display
 - Large ASCII art numbers for countdown
@@ -120,8 +166,8 @@
 
 ---
 
-## Phase 5: Unified Theme & Design System
-**Version:** v0.1.8 | **Status:** Pending
+## Phase 6: Unified Theme & Design System
+**Version:** v0.1.9 | **Status:** Pending
 
 ### Charmbracelet Library Integration
 ```go
@@ -157,7 +203,7 @@ github.com/charmbracelet/harmonica // Animations
 
 ---
 
-## Phase 6: Final Polish & Documentation
+## Phase 7: Final Polish & Documentation
 **Version:** v0.2.0 | **Status:** Pending
 
 ### Cross-Screen Consistency Audit

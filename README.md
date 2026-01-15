@@ -28,14 +28,20 @@ flowState-cli keeps you in the flow by making knowledge capture, task management
 
 ## Features
 
-- **Notes**: Quick capture, tagging, and organization
-- **Todos**: Task management with priorities and due dates
-- **Focus Sessions**: Pomodoro-style timer with session tracking
+### Core Features
+- **Notes**: Quick capture with markdown preview, wikilinks `[[Note Title]]`, and `#hashtag` tagging
+- **Todos**: Task management with priorities, due dates, status badges, and multiple sort/filter modes
+- **Focus Sessions**: Pomodoro-style timer with configurable durations, session history, and streak tracking
+- **Linking System**: Connect notes and todos through bidirectional relationships
+- **Mind Map**: Visual graph of your notes and their connections
 - **Semantic Search**: Local ONNX-powered semantic search with embeddings
-- **Linking System**: Connect notes and todos through relationships
-- **Tagging**: Simple tagging with `#hashtag` syntax, auto-extracted from content
+
+### UX Enhancements
 - **Quick Capture**: `Ctrl+X` to instantly capture a thought from anywhere
-- **Intuitive Navigation**: Persistent help bar with context-sensitive shortcuts
+- **Context-Sensitive Help**: Press `?` for detailed help in Links and Mind Map screens
+- **Smart Duration Picker**: Arrow keys auto-save and auto-exit after selection
+- **Clean Edit Mode**: Title label hides when editing body for distraction-free writing
+- **Multiline Notes**: Enter key creates new lines in note body (Ctrl+S to save)
 
 ## Architecture
 
@@ -156,16 +162,46 @@ On first run, the application will:
 | `Esc` | Go back / Cancel |
 | `q` | Quit application |
 
-#### Notes & Todos Screens
+#### Notes Screen
 | Key | Action |
 |-----|--------|
-| `c` | Create new item |
-| `e` | Edit selected item |
-| `d` | Delete selected item (with confirmation) |
+| `c` | Create new note |
+| `e` | Edit selected note |
+| `p` | Preview note (read-only markdown view) |
+| `d` | Delete selected note (with confirmation) |
+| `/` | Open search filter |
+| `s` | Cycle sort mode (Date↓ → Title → Date↑) |
+| `t` | Filter by tag |
+| `Ctrl+R` | Reset all filters |
+| `Ctrl+L` | Open linking modal |
+| `j/↓` | Move selection down |
+| `k/↑` | Move selection up |
+
+#### Notes Edit Mode
+| Key | Action |
+|-----|--------|
+| `Tab` | Switch between title and body fields |
+| `Enter` | Save (when in title) / New line (when in body) |
+| `Ctrl+S` | Save note |
+| `Ctrl+E` | Toggle markdown preview |
+| `Ctrl+B` | Bold text |
+| `Ctrl+I` | Italic text |
+| `Esc` | Cancel and return to list |
+
+#### Todos Screen
+| Key | Action |
+|-----|--------|
+| `c` | Create new todo |
+| `e` | Edit selected todo |
+| `v` | Preview todo details |
+| `d` | Delete selected todo (with confirmation) |
 | `Space` | Toggle todo completion |
-| `Tab` | Switch between form fields |
-| `Ctrl+S` | Save item |
-| `Ctrl+L` | Create link to another item |
+| `/` | Open search filter |
+| `s` | Cycle sort mode (Date↓ → Priority → Date↑ → A-Z → Due Date) |
+| `p` | Cycle priority filter (All → High → Medium → Low) |
+| `t` | Filter by tag |
+| `Ctrl+R` | Reset all filters |
+| `Ctrl+L` | Open linking modal |
 | `j/↓` | Move selection down |
 | `k/↑` | Move selection up |
 
@@ -174,9 +210,19 @@ On first run, the application will:
 |-----|--------|
 | `c` | Create new link |
 | `d` | Delete selected link |
+| `?` | Show help |
 | `↑/↓` | Navigate link types or targets |
 | `Enter` | Select / Confirm |
 | `Esc` | Close modal / Go back |
+
+#### Mind Map Screen
+| Key | Action |
+|-----|--------|
+| `h/j/k/l` | Navigate nodes |
+| `+/-` | Zoom in/out |
+| `Enter` | Open selected note |
+| `?` | Show help |
+| `Esc` | Return to notes |
 
 #### Focus Sessions Screen
 | Key | Action |
@@ -192,10 +238,12 @@ On first run, the application will:
 #### Duration Picker (press `d` to open)
 | Key | Action |
 |-----|--------|
-| `←/→` | Adjust duration (auto-saves with ✓ indicator) |
+| `←/→` | Adjust duration (auto-saves and auto-exits after 500ms) |
 | `Tab` | Switch between work/break duration |
-| `Enter` | Done - exit duration picker |
+| `Enter` | Done - exit immediately |
 | `Esc` | Cancel and exit |
+
+> **Tip**: Just press `d`, use arrow keys to select your duration, and the picker closes automatically!
 
 ## Releasing (maintainers)
 
@@ -356,10 +404,11 @@ CREATE INDEX idx_links_target ON links(target_type, target_id);
 
 The application uses `all-MiniLM-L6-v2` embedding model for semantic search:
 
-- **Model size**: ~90MB
+- **Model size**: ~90MB (downloaded on first run)
 - **Dimensions**: 384
-- **Storage**: Qdrant vector database
+- **Storage**: SQLite-backed vectors (`note_vectors` table)
 - **Features**: Natural language queries, tag filtering, incremental indexing
+- **Privacy**: 100% local - no cloud dependencies
 
 ## Requirements
 

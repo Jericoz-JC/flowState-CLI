@@ -148,6 +148,7 @@ var (
 	LinksHints = []HelpHint{
 		{Key: "c", Description: "Create Link", Primary: true},
 		{Key: "d", Description: "Delete"},
+		{Key: "?", Description: "Help"},
 		{Key: "Esc", Description: "Close"},
 	}
 
@@ -221,6 +222,7 @@ var (
 		{Key: "h/j/k/l", Description: "Move"},
 		{Key: "+/-", Description: "Zoom"},
 		{Key: "Enter", Description: "Open Note", Primary: true},
+		{Key: "?", Description: "Help"},
 		{Key: "Ctrl+H", Description: "Home"},
 	}
 )
