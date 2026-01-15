@@ -22,6 +22,12 @@ jobs:
         with:
           go-version: '1.22'
 
+      - name: Download Go modules
+        run: go mod download
+
+      - name: Verify modules
+        run: go mod verify
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
