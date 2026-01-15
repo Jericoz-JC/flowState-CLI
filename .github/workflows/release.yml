@@ -22,13 +22,24 @@ jobs:
         with:
           go-version: '1.22'
 
+      - name: Debug - List files
+        run: |
+          echo "=== Root ==="
+          ls -la
+          echo "=== go.mod ==="
+          cat go.mod
+          echo "=== internal/models ==="
+          ls -la internal/models/
+          echo "=== internal/storage/sqlite ==="
+          ls -la internal/storage/sqlite/
+
+      - name: Set Go environment
+        run: |
+          go env -w GOPRIVATE=github.com/Jericoz-JC/*
+          go env
+
       - name: Download Go modules
         run: go mod download
-        env:
-          GOPROXY: https://proxy.golang.org,direct
-
-      - name: Verify modules
-        run: go mod verify
 
       - name: Test build
         run: go build -v ./...
