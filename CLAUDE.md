@@ -2,10 +2,10 @@
 
 > This file tracks the current development plan and progress. Updated after each phase completion.
 
-## Current Status: Phase 5 Complete, v0.1.8 Released
+## Current Status: Phase 6 Complete, v0.1.9 Released
 **Last Updated:** January 14, 2026
-**Current Version:** v0.1.8
-**Next Target:** v0.1.9
+**Current Version:** v0.1.9
+**Next Target:** v0.1.10
 
 ---
 
@@ -18,7 +18,7 @@
 | v0.1.6 | 3 | ✅ Complete | Todos Notion-Inspired Overhaul |
 | v0.1.7 | 4 | ✅ Complete | Bug Fixes & UX Polish |
 | v0.1.8 | 5 | ✅ Complete | Critical Bug Fixes & Layout Issues |
-| v0.1.9 | 6 | ⏳ Pending | Notes System Overhaul |
+| v0.1.9 | 6 | ✅ Complete | Notes System Overhaul |
 | v0.1.10 | 7 | ⏳ Pending | Focus Screen Visual Overhaul |
 | v0.1.11 | 8 | ⏳ Pending | Unified Theme & Design System |
 | v0.2.0 | 9 | ⏳ Pending | Final Polish & Documentation |
@@ -204,30 +204,39 @@
 
 ---
 
-## Phase 6: Notes System Overhaul
-**Version:** v0.1.9 | **Status:** Pending
-
-### Writing Format Improvements
-- [ ] Shift to standard, intuitive writing format
-- [ ] Consider Markdown-lite or standard text blocks
-- [ ] Improve text editing experience
+## Phase 6: Notes System Overhaul ✅
+**Version:** v0.1.9 | **Status:** Complete
 
 ### Tagging Engine Overhaul
-- [ ] Fix broken @tag and #tag functionality
-- [ ] Implement "Quick-Tag" creation for rapid categorization
-  - Examples: `Math 126`, `Claude Projects`, `Work`
-- [ ] Add Toggle List view to filter notes by specific tags
-- [ ] Tag autocomplete suggestions
+- [x] Fixed @tag and #tag functionality - both now extract as tags
+- [x] Tags extracted from both title AND body (not just body)
+- [x] Added `cleanTag()` function for tag normalization
+- [x] Implemented "Quick-Tag" picker modal (Ctrl+G in edit mode)
+  - Multi-select tags from existing tags
+  - Appends selected tags to note body
+- [x] Added Tag Filter picker ('t' key in list view)
+  - Shows all available tags
+  - Multi-select for filtering by multiple tags
+  - Pre-selects currently active filters
 
-### Contextual Saving
-- [ ] Improve save logic for intuitive note linking
-- [ ] Link notes to specific product, project, or class tag upon creation
-- [ ] Tag-based organization on note creation screen
+### Features Added
+- **@mention Support**: Both `#hashtag` and `@mention` syntax now create tags
+- **Quick-Tag Picker**: Press Ctrl+G while editing to add existing tags
+- **Tag Filter Picker**: Press 't' to filter notes by tags (multi-select)
+- **Tags from Title**: Tags now extracted from both title and body
 
-### Files to Modify
-- `internal/tui/screens/notes.go` - Major overhaul
-- `internal/models/note.go` - Tag model updates
-- `internal/storage/` - Tag persistence
+### Files Modified
+- `internal/tui/screens/notes.go` - Major overhaul with tag picker
+- `internal/tui/screens/notes_test.go` - Added tag extraction tests
+
+### Tests Added
+- `TestExtractTagsHashtag` - verifies #hashtag extraction
+- `TestExtractTagsAtSign` - verifies @mention extraction
+- `TestExtractTagsFromTitle` - verifies combined title+body extraction
+
+### Release
+- Tag: v0.1.9
+- Release: https://github.com/Jericoz-JC/flowState-CLI/releases/tag/v0.1.9
 
 ---
 

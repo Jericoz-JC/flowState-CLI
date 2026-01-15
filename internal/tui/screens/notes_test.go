@@ -168,3 +168,130 @@ func TestNotesEscCancels(t *testing.T) {
 		t.Fatalf("expected Esc to cancel and exit create mode")
 	}
 }
+
+// TestExtractTagsHashtag verifies #hashtag extraction
+func TestExtractTagsHashtag(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		content  string
+		expected []string
+	}{
+		{
+			name:     "single hashtag",
+			content:  "This is a note with #project tag",
+			expected: []string{"project"},
+		},
+		{
+			name:     "multiple hashtags",
+			content:  "Working on #work and #coding today",
+			expected: []string{"work", "coding"},
+		},
+		{
+			name:     "hashtags with numbers",
+			content:  "Class notes for #math126 and #cs101",
+			expected: []string{"math126", "cs101"},
+		},
+		{
+			name:     "no hashtags",
+			content:  "Just a regular note without tags",
+			expected: []string{},
+		},
+		{
+			name:     "hashtag at start",
+			content:  "#important This is urgent",
+			expected: []string{"important"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tags := extractTags(tt.content)
+			if len(tags) != len(tt.expected) {
+				t.Errorf("expected %d tags, got %d: %v", len(tt.expected), len(tags), tags)
+				return
+			}
+			// Check each expected tag exists (order may vary due to map)
+			for _, exp := range tt.expected {
+				found := false
+				for _, tag := range tags {
+					if tag == exp {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("expected tag %q not found in %v", exp, tags)
+				}
+			}
+		})
+	}
+}
+
+// TestExtractTagsAtSign verifies @mention extraction (Phase 6)
+func TestExtractTagsAtSign(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		content  string
+		expected []string
+	}{
+		{
+			name:     "single @mention",
+			content:  "Meeting with @john about project",
+			expected: []string{"john"},
+		},
+		{
+			name:     "mixed # and @",
+			content:  "Task for @alice on #project",
+			expected: []string{"alice", "project"},
+		},
+		{
+			name:     "multiple @mentions",
+			content:  "@bob and @carol working on this",
+			expected: []string{"bob", "carol"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tags := extractTags(tt.content)
+			if len(tags) != len(tt.expected) {
+				t.Errorf("expected %d tags, got %d: %v", len(tt.expected), len(tags), tags)
+				return
+			}
+			for _, exp := range tt.expected {
+				found := false
+				for _, tag := range tags {
+					if tag == exp {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("expected tag %q not found in %v", exp, tags)
+				}
+			}
+		})
+	}
+}
+
+// TestExtractTagsFromTitle verifies tags are extracted from both title and body (Phase 6)
+func TestExtractTagsFromTitle(t *testing.T) {
+	t.Parallel()
+
+	// Tags should be extracted from the combined title + body content
+	titleContent := "#meeting Notes"
+	bodyContent := "Discussion about #project with @team"
+
+	// Combined extraction
+	combined := titleContent + " " + bodyContent
+	tags := extractTags(combined)
+
+	expected := []string{"meeting", "project", "team"}
+	if len(tags) != len(expected) {
+		t.Errorf("expected %d tags, got %d: %v", len(expected), len(tags), tags)
+	}
+}

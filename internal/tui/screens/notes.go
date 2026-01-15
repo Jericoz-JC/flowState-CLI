@@ -75,6 +75,13 @@ type NotesListModel struct {
 	helpBar          components.HelpBar
 	width            int
 	height           int
+
+	// Quick-Tag picker (Phase 6)
+	showTagPicker     bool     // Tag picker modal visible
+	availableTags     []string // All tags from all notes
+	tagPickerIndex    int      // Currently highlighted tag
+	tagPickerSelected []string // Tags selected in picker (for multi-select)
+	tagPickerMode     string   // "add" for adding to note, "filter" for filtering list
 }
 
 // NewNotesListModel creates a new notes list screen.
@@ -258,6 +265,47 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// Handle Quick-Tag picker (Phase 6)
+		if m.showTagPicker {
+			switch msg.String() {
+			case "up", "k":
+				if m.tagPickerIndex > 0 {
+					m.tagPickerIndex--
+				}
+				return m, nil
+			case "down", "j":
+				if m.tagPickerIndex < len(m.availableTags)-1 {
+					m.tagPickerIndex++
+				}
+				return m, nil
+			case " ": // Space to toggle
+				if len(m.availableTags) > 0 && m.tagPickerIndex < len(m.availableTags) {
+					m.toggleTagInPicker(m.availableTags[m.tagPickerIndex])
+				}
+				return m, nil
+			case "enter":
+				// Apply based on mode
+				if m.tagPickerMode == "filter" {
+					// Apply as filters
+					m.selectedTags = make([]string, len(m.tagPickerSelected))
+					copy(m.selectedTags, m.tagPickerSelected)
+					m.LoadNotes()
+				} else {
+					// Add tags to note body
+					m.applyTagsFromPicker()
+				}
+				m.showTagPicker = false
+				m.tagPickerSelected = []string{}
+				return m, nil
+			case "esc":
+				// Cancel without applying
+				m.showTagPicker = false
+				m.tagPickerSelected = []string{}
+				return m, nil
+			}
+			return m, nil
+		}
+
 		// Handle preview mode
 		if m.showPreview {
 			switch msg.String() {
@@ -313,13 +361,23 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
+			// Open Quick-Tag picker (Phase 6)
+			if msg.String() == "ctrl+g" || msg.String() == "alt+g" {
+				m.loadAvailableTags()
+				m.showTagPicker = true
+				m.tagPickerIndex = 0
+				m.tagPickerMode = "add"
+				m.tagPickerSelected = []string{}
+				return m, nil
+			}
+
 			// Handle enter only when title is focused (to save)
 			// When body is focused, let enter pass through to textarea for newlines
 			if msg.String() == "enter" && m.titleInput.Focused() {
 				title := strings.TrimSpace(m.titleInput.Value())
 				body := strings.TrimSpace(m.bodyInput.Value())
 				if title != "" {
-					tags := extractTags(body)
+					tags := extractTags(title + " " + body)
 					wikilinks := parseWikilinks(body)
 
 					if m.editingID > 0 {
@@ -363,7 +421,7 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				title := strings.TrimSpace(m.titleInput.Value())
 				body := strings.TrimSpace(m.bodyInput.Value())
 				if title != "" {
-					tags := extractTags(body)
+					tags := extractTags(title + " " + body)
 					wikilinks := parseWikilinks(body)
 
 					if m.editingID > 0 {
@@ -464,16 +522,15 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "t":
-			// Toggle tag filter for selected note
-			if len(m.list.VisibleItems()) > 0 {
-				if selected, ok := m.list.SelectedItem().(NoteItem); ok {
-					if len(selected.note.Tags) > 0 {
-						// Add first tag to filter (in future, show tag selector)
-						tag := selected.note.Tags[0]
-						m.toggleTagFilter(tag)
-						m.LoadNotes()
-					}
-				}
+			// Open tag filter picker (Phase 6)
+			m.loadAvailableTags()
+			if len(m.availableTags) > 0 {
+				m.showTagPicker = true
+				m.tagPickerIndex = 0
+				m.tagPickerMode = "filter"
+				// Pre-select currently active filter tags
+				m.tagPickerSelected = make([]string, len(m.selectedTags))
+				copy(m.tagPickerSelected, m.selectedTags)
 			}
 			return m, nil
 		case "s":
@@ -550,7 +607,15 @@ func (m *NotesListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 //   - Shows create/edit form when active
 //   - Preview mode for reading notes
 //   - Filter input for searching
+//
+// Phase 6: Notes System Overhaul
+//   - Quick-Tag picker modal
 func (m *NotesListModel) View() string {
+	// Tag picker modal (highest priority in create/edit mode)
+	if m.showTagPicker {
+		return m.renderTagPicker()
+	}
+
 	// Preview mode
 	if m.showPreview {
 		return m.renderPreview()
@@ -636,10 +701,10 @@ func (m *NotesListModel) View() string {
 		// Edit mode hints with preview toggle
 		editHints := []components.HelpHint{
 			{Key: mod + "+E", Description: "Preview"},
+			{Key: mod + "+G", Description: "Tags"},
 			{Key: "Tab", Description: "Switch Field"},
 			{Key: mod + "+S", Description: "Save", Primary: true},
 			{Key: mod + "+B", Description: "Bold"},
-			{Key: mod + "+I", Description: "Italic"},
 			{Key: "Esc", Description: "Cancel"},
 		}
 		m.helpBar.SetHints(editHints)
@@ -1132,20 +1197,32 @@ func (m *NotesListModel) createWikilinks(sourceNoteID int64, wikilinks []string)
 	}
 }
 
-// extractTags finds all #hashtags in content and returns them as a slice.
+// extractTags finds all #hashtags and @mentions in content and returns them as a slice.
 //
 // Phase 2: Notes
 //   - Parses content for #word patterns
 //   - Converts tags to lowercase
 //   - Removes duplicates
+//
+// Phase 6: Notes System Overhaul
+//   - Added support for @mention syntax
+//   - Both #hashtag and @mention are treated as tags
 func extractTags(content string) []string {
 	tags := make(map[string]struct{})
 	words := strings.Fields(content)
 	for _, word := range words {
+		// Handle #hashtag
 		if strings.HasPrefix(word, "#") {
 			tag := strings.TrimPrefix(word, "#")
-			tag = strings.TrimSpace(tag)
-			tag = strings.ToLower(tag)
+			tag = cleanTag(tag)
+			if tag != "" {
+				tags[tag] = struct{}{}
+			}
+		}
+		// Handle @mention
+		if strings.HasPrefix(word, "@") {
+			tag := strings.TrimPrefix(word, "@")
+			tag = cleanTag(tag)
 			if tag != "" {
 				tags[tag] = struct{}{}
 			}
@@ -1157,4 +1234,167 @@ func extractTags(content string) []string {
 		result = append(result, tag)
 	}
 	return result
+}
+
+// cleanTag removes punctuation and normalizes a tag string.
+func cleanTag(tag string) string {
+	tag = strings.TrimSpace(tag)
+	tag = strings.ToLower(tag)
+	// Remove trailing punctuation
+	tag = strings.TrimRight(tag, ".,!?;:")
+	return tag
+}
+
+// loadAvailableTags loads all unique tags from all notes in the database.
+func (m *NotesListModel) loadAvailableTags() {
+	notes, err := m.store.ListNotes()
+	if err != nil {
+		m.availableTags = []string{}
+		return
+	}
+
+	tagSet := make(map[string]struct{})
+	for _, note := range notes {
+		for _, tag := range note.Tags {
+			tagSet[tag] = struct{}{}
+		}
+	}
+
+	// Convert to sorted slice
+	tags := make([]string, 0, len(tagSet))
+	for tag := range tagSet {
+		tags = append(tags, tag)
+	}
+	sort.Strings(tags)
+	m.availableTags = tags
+}
+
+// isTagSelected checks if a tag is currently selected in the picker.
+func (m *NotesListModel) isTagSelected(tag string) bool {
+	for _, t := range m.tagPickerSelected {
+		if t == tag {
+			return true
+		}
+	}
+	return false
+}
+
+// toggleTagInPicker adds or removes a tag from the picker selection.
+func (m *NotesListModel) toggleTagInPicker(tag string) {
+	for i, t := range m.tagPickerSelected {
+		if t == tag {
+			// Remove tag
+			m.tagPickerSelected = append(m.tagPickerSelected[:i], m.tagPickerSelected[i+1:]...)
+			return
+		}
+	}
+	// Add tag
+	m.tagPickerSelected = append(m.tagPickerSelected, tag)
+}
+
+// applyTagsFromPicker appends the selected tags to the note body.
+func (m *NotesListModel) applyTagsFromPicker() {
+	if len(m.tagPickerSelected) == 0 {
+		return
+	}
+
+	// Build tag string
+	var tagStr string
+	for _, tag := range m.tagPickerSelected {
+		tagStr += " #" + tag
+	}
+
+	// Append to body
+	current := m.bodyInput.Value()
+	if current != "" && !strings.HasSuffix(current, " ") && !strings.HasSuffix(current, "\n") {
+		tagStr = " " + strings.TrimLeft(tagStr, " ")
+	}
+	m.bodyInput.SetValue(current + tagStr)
+}
+
+// renderTagPicker renders the Quick-Tag picker modal.
+func (m *NotesListModel) renderTagPicker() string {
+	titleStyle := lipgloss.NewStyle().
+		Foreground(styles.PrimaryColor).
+		Bold(true)
+
+	selectedStyle := lipgloss.NewStyle().
+		Foreground(styles.SecondaryColor).
+		Bold(true).
+		Background(styles.SurfaceColor).
+		Padding(0, 1)
+
+	normalStyle := lipgloss.NewStyle().
+		Foreground(styles.TextColor).
+		Padding(0, 1)
+
+	checkedStyle := lipgloss.NewStyle().
+		Foreground(styles.SuccessColor)
+
+	uncheckedStyle := lipgloss.NewStyle().
+		Foreground(styles.MutedColor)
+
+	// Title based on mode
+	var title, subtitle string
+	if m.tagPickerMode == "filter" {
+		title = titleStyle.Render("🔍 Filter by Tags")
+		subtitle = styles.SubtitleStyle.Render("Select tags to filter (Space to toggle, Enter to apply)")
+	} else {
+		title = titleStyle.Render("🏷️ Quick-Tag Picker")
+		subtitle = styles.SubtitleStyle.Render("Select tags to add (Space to toggle, Enter to apply)")
+	}
+
+	// Tag list
+	var tagLines []string
+	if len(m.availableTags) == 0 {
+		emptyStyle := lipgloss.NewStyle().Foreground(styles.MutedColor).Italic(true)
+		tagLines = append(tagLines, emptyStyle.Render("No tags yet. Create notes with #tags first."))
+	} else {
+		for i, tag := range m.availableTags {
+			checkbox := uncheckedStyle.Render("[ ]")
+			if m.isTagSelected(tag) {
+				checkbox = checkedStyle.Render("[✓]")
+			}
+
+			tagText := checkbox + " #" + tag
+			if i == m.tagPickerIndex {
+				tagLines = append(tagLines, selectedStyle.Render("▶ "+tagText))
+			} else {
+				tagLines = append(tagLines, normalStyle.Render("  "+tagText))
+			}
+		}
+	}
+
+	// Selected tags preview
+	var selectedPreview string
+	if len(m.tagPickerSelected) > 0 {
+		if m.tagPickerMode == "filter" {
+			selectedPreview = styles.HelpStyle.Render("Filter by: " + strings.Join(m.tagPickerSelected, ", "))
+		} else {
+			selectedPreview = styles.HelpStyle.Render("Will add: " + strings.Join(m.tagPickerSelected, ", "))
+		}
+	}
+
+	// Help hints
+	pickerHints := []components.HelpHint{
+		{Key: "↑/↓", Description: "Navigate"},
+		{Key: "Space", Description: "Toggle"},
+		{Key: "Enter", Description: "Apply", Primary: true},
+		{Key: "Esc", Description: "Cancel"},
+	}
+	m.helpBar.SetHints(pickerHints)
+
+	content := lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		subtitle,
+		"",
+		lipgloss.JoinVertical(lipgloss.Left, tagLines...),
+		"",
+		selectedPreview,
+		"",
+		m.helpBar.View(),
+	)
+
+	return styles.PanelStyle.Render(content)
 }
