@@ -33,9 +33,9 @@ Thumbs.db
 *.db
 *.db-journal
 
-# Models
-models/
-!models/README.md
+# ML Models (embedding models, not Go code)
+/models/
+!/models/README.md
 
 # Config
 config.yaml
