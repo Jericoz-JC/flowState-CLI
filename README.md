@@ -132,13 +132,6 @@ go build -o flowstate ./cmd/flowState
 ./flowstate
 ```
 
-#### Option C: `go install` (requires Go)
-
-```bash
-go install github.com/Jericoz-JC/flowState-CLI/cmd/flowState@latest
-flowState
-```
-
 ### First Run
 
 On first run, the application will:
@@ -206,19 +199,45 @@ On first run, the application will:
 
 ## Releasing (maintainers)
 
+### Prerequisites
+- [GoReleaser](https://goreleaser.com/) installed
+- `GITHUB_TOKEN` environment variable set with repo permissions
+- npm account with publish access to `flowstate-cli`
+
+### Release Steps
+
 ```bash
-# 1) Commit and push
+# 1) Update version in npm/package.json (must match the tag version)
+# Edit npm/package.json and change "version": "X.Y.Z"
+
+# 2) Commit and push all changes
 git add .
-git commit -m "Prepare for v0.1.0 release"
+git commit -m "Prepare for vX.Y.Z release"
 git push origin main
 
-# 2) Tag and push the tag
-git tag -a v0.1.0 -m "First release - notes, todos, and focus sessions"
-git push origin v0.1.0
+# 3) Create and push the tag
+git tag -a vX.Y.Z -m "Release description"
+git push origin vX.Y.Z
 
-# 3) Build + publish GitHub Release (requires GITHUB_TOKEN)
+# 4) Build binaries and create GitHub Release (requires GITHUB_TOKEN)
 goreleaser release --clean
+
+# 5) Publish to npm (after GitHub release is complete)
+cd npm
+npm publish
 ```
+
+### Important Notes
+- The npm package version in `npm/package.json` **must match** the git tag version
+- GitHub release must be complete before `npm publish` (binaries must be downloadable)
+- The npm `postinstall` script downloads binaries from GitHub releases
+- Test the npm package locally before publishing: `npm pack && npm install -g flowstate-cli-X.Y.Z.tgz`
+
+### Troubleshooting npm Installation
+If users report 404 errors during `npm install`:
+1. Verify the GitHub release exists at `https://github.com/Jericoz-JC/flowState-CLI/releases/tag/vX.Y.Z`
+2. Check that all 6 platform binaries are uploaded (darwin-amd64, darwin-arm64, linux-amd64, linux-arm64, windows-amd64, windows-arm64)
+3. Ensure npm package version matches the release tag exactly
 
 ## Project Structure
 

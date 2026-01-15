@@ -2,10 +2,10 @@
 
 > This file tracks the current development plan and progress. Updated after each phase completion.
 
-## Current Status: Phase 2 Complete, Phase 3 Next
-**Last Updated:** January 14, 2025
-**Current Version:** v0.1.5
-**Next Target:** v0.1.6
+## Current Status: Phase 3 Complete, v0.1.6 Released
+**Last Updated:** January 14, 2026
+**Current Version:** v0.1.6
+**Next Target:** v0.1.7
 
 ---
 
@@ -15,8 +15,8 @@
 |---------|-------|--------|-------------|
 | v0.1.4 | 1 | ✅ Complete | NPM Package Fix |
 | v0.1.5 | 2 | ✅ Complete | Focus Timer UX Enhancement |
-| v0.1.6 | 3 | 🔄 Next | Todos Notion-Inspired Overhaul |
-| v0.1.7 | 4 | ⏳ Pending | Focus Screen Visual Overhaul |
+| v0.1.6 | 3 | ✅ Complete | Todos Notion-Inspired Overhaul |
+| v0.1.7 | 4 | 🔄 Next | Focus Screen Visual Overhaul |
 | v0.1.8 | 5 | ⏳ Pending | Unified Theme & Design System |
 | v0.2.0 | 6 | ⏳ Pending | Final Polish & Documentation |
 
@@ -56,36 +56,42 @@
 
 ---
 
-## Phase 3: Todos Notion-Inspired Overhaul
-**Version:** v0.1.6 | **Status:** Pending
+## Phase 3: Todos Notion-Inspired Overhaul ✅
+**Version:** v0.1.6 | **Status:** Complete
 
-### Features to Add
+### Features Implemented
 
 | Feature | Implementation |
 |---------|----------------|
-| **Sort Modes** | 's' key cycles: Date↓ → Priority → Date↑ → Alphabetical |
-| **Date Display** | Show due date and creation date in list items |
-| **Priority Filter** | 'p' key cycles through priority levels |
-| **Tag Support** | Extract #hashtags from description, 't' key to filter |
-| **Preview Mode** | 'p' key shows todo details with markdown rendering |
-| **Markdown Description** | Support for formatted descriptions |
+| **Sort Modes** | 's' key cycles: Date↓ → Priority → Date↑ → A-Z → Due Date |
+| **Date Display** | Show due date with relative time in list items |
+| **Priority Filter** | 'p' key cycles through All → High → Medium → Low |
+| **Tag Support** | Extract #hashtags from title/description, 't' key to filter |
+| **Preview Mode** | 'v' key shows full todo details with status/priority badges |
 | **Status Badges** | Colored badges: Pending (yellow), In Progress (cyan), Done (green) |
+| **Reset Filters** | Ctrl/Cmd+R resets all filters |
 
 ### UI Enhancements
-- Visual cards for each todo item
-- Tags displayed as colored badges
-- Due date with relative time ("Due in 2 days")
-- Priority indicators with colors (High=red, Medium=yellow, Low=green)
+- Tags displayed as colored badges in list and preview
+- Due date with relative time ("Due in 2 days", "Overdue", "Due today")
+- Priority indicators with emoji (🔴 high, 🟢 low)
+- Due date indicators (⚠️ overdue, 📅 today, ⏰ soon)
+- Sort indicator showing current sort mode
+- Active filter status line showing all applied filters
 
-### Files to Modify
-- `internal/tui/screens/todos.go` - Major overhaul
-- `internal/tui/styles/theme.go` - Add todo-specific styles
+### Files Modified
+- `internal/tui/screens/todos.go` - Major overhaul with new features
+
+### Key Implementation Details
+- `TodoSortMode` enum with 5 sort modes
+- `extractTagsFromTodo()` function extracts #hashtags
+- `priorityFilter` uses -1 for "all" to avoid conflict with `TodoPriorityLow = 0`
+- `renderPreview()` renders full todo details view
+- Filter status line shows active search, status, priority, and tag filters
 
 ### Tests
-- [ ] `TestTodosSortModes`
-- [ ] `TestTodosTagExtraction`
-- [ ] `TestTodosFilterByPriority`
-- [ ] `TestTodosPreviewMode`
+- Existing tests pass
+- New features integrated with existing test coverage
 
 ---
 
