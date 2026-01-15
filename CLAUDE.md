@@ -2,10 +2,10 @@
 
 > This file tracks the current development plan and progress. Updated after each phase completion.
 
-## Current Status: Phase 4 Complete, v0.1.7 Released
+## Current Status: Phase 5 Complete, v0.1.8 Released
 **Last Updated:** January 14, 2026
-**Current Version:** v0.1.7
-**Next Target:** v0.1.8
+**Current Version:** v0.1.8
+**Next Target:** v0.1.9
 
 ---
 
@@ -17,7 +17,7 @@
 | v0.1.5 | 2 | ✅ Complete | Focus Timer UX Enhancement |
 | v0.1.6 | 3 | ✅ Complete | Todos Notion-Inspired Overhaul |
 | v0.1.7 | 4 | ✅ Complete | Bug Fixes & UX Polish |
-| v0.1.8 | 5 | 🔄 In Progress | Critical Bug Fixes & Layout Issues |
+| v0.1.8 | 5 | ✅ Complete | Critical Bug Fixes & Layout Issues |
 | v0.1.9 | 6 | ⏳ Pending | Notes System Overhaul |
 | v0.1.10 | 7 | ⏳ Pending | Focus Screen Visual Overhaul |
 | v0.1.11 | 8 | ⏳ Pending | Unified Theme & Design System |
@@ -147,8 +147,8 @@
 
 ---
 
-## Phase 5: Critical Bug Fixes & Layout Issues
-**Version:** v0.1.8 | **Status:** In Progress
+## Phase 5: Critical Bug Fixes & Layout Issues ✅
+**Version:** v0.1.8 | **Status:** Complete
 
 ### Functional Bug Fixes
 
@@ -197,6 +197,10 @@
 - `TestTodosCreateAndSave` - verifies full create and save flow
 - `TestTodosEscCancelsCreate` - verifies Esc cancels create
 - `TestTodosTabSwitchesFocus` - verifies Tab toggles title/description focus
+
+### Release
+- Tag: v0.1.8
+- Release: https://github.com/Jericoz-JC/flowState-CLI/releases/tag/v0.1.8
 
 ---
 
@@ -338,10 +342,19 @@ For each phase:
 4. Update CLAUDE.md with progress
 5. Update README.md with new features
 6. Commit with descriptive message
-7. Push to main
-8. Create tag (e.g., v0.1.5)
-9. Build binaries and create GitHub release
-10. Verify installation on all platforms
+7. Push to main AND create/push tag to trigger release:
+   ```bash
+   git push origin main
+   git tag v0.1.X
+   git push origin v0.1.X
+   ```
+8. CI/CD automatically:
+   - Builds binaries for all 6 platforms
+   - Creates GitHub release with binaries
+   - Publishes to npm
+9. Verify installation on all platforms
+
+**IMPORTANT:** Always tag and push after completing a phase. The CI/CD pipeline only triggers on tag push (`v*`), not on main branch push.
 
 ---
 
