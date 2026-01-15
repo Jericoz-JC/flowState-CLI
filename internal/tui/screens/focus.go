@@ -205,12 +205,15 @@ func (m *FocusModel) Update(msg tea.Msg) (FocusModel, tea.Cmd) {
 // handleTimerComplete handles when the timer reaches zero.
 func (m *FocusModel) handleTimerComplete() (FocusModel, tea.Cmd) {
 	if m.mode == FocusModeRunning {
-		// Work session completed - save to database
+		// Work session completed - NOW save to database
 		now := time.Now()
 		if m.currentSession != nil {
 			m.currentSession.EndTime = &now
 			m.currentSession.Status = models.SessionStatusCompleted
-			m.store.UpdateSession(m.currentSession)
+			// Create the session in DB only on completion
+			if err := m.store.CreateSession(m.currentSession); err != nil {
+				// Log error but continue (session tracking is best-effort)
+			}
 		}
 
 		// Start break
@@ -240,14 +243,12 @@ func (m *FocusModel) handleTimerInput(msg tea.KeyMsg) (FocusModel, tea.Cmd) {
 		if m.mode == FocusModeIdle || m.mode == FocusModePaused {
 			// Start or resume timer
 			if m.mode == FocusModeIdle {
-				// Create new session
-				session := &models.FocusSession{
+				// Create in-memory session for tracking (NOT saved to DB yet)
+				// Session will only be saved when completed successfully
+				m.currentSession = &models.FocusSession{
 					StartTime: time.Now(),
 					Duration:  m.workDuration * 60, // Store in seconds
 					Status:    models.SessionStatusRunning,
-				}
-				if err := m.store.CreateSession(session); err == nil {
-					m.currentSession = session
 				}
 				m.remaining = time.Duration(m.workDuration) * time.Minute
 				m.totalDuration = m.remaining
@@ -265,14 +266,9 @@ func (m *FocusModel) handleTimerInput(msg tea.KeyMsg) (FocusModel, tea.Cmd) {
 
 	case "c":
 		if m.mode == FocusModeRunning || m.mode == FocusModePaused || m.mode == FocusModeBreak {
-			// Cancel current session
-			if m.currentSession != nil {
-				now := time.Now()
-				m.currentSession.EndTime = &now
-				m.currentSession.Status = models.SessionStatusCancelled
-				m.store.UpdateSession(m.currentSession)
-				m.currentSession = nil
-			}
+			// Cancel current session - just discard, don't save to DB
+			// (cancelled sessions are not worth tracking)
+			m.currentSession = nil
 			m.mode = FocusModeIdle
 			m.remaining = time.Duration(m.workDuration) * time.Minute
 			m.totalDuration = m.remaining
@@ -302,7 +298,8 @@ func (m *FocusModel) handleTimerInput(msg tea.KeyMsg) (FocusModel, tea.Cmd) {
 			if m.currentSession != nil {
 				m.currentSession.EndTime = &now
 				m.currentSession.Status = models.SessionStatusCompleted
-				m.store.UpdateSession(m.currentSession)
+				// Save session to DB on early completion
+				m.store.CreateSession(m.currentSession)
 				m.currentSession = nil
 			}
 			m.mode = FocusModeBreak

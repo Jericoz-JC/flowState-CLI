@@ -330,3 +330,71 @@ func TestFocusDurationPickerShowsBothValues(t *testing.T) {
 		t.Fatalf("expected valid work/break durations")
 	}
 }
+
+// TestFocusStartDoesNotSaveSession verifies that starting a session does NOT
+// immediately save to the database. Sessions should only be saved when completed.
+func TestFocusStartDoesNotSaveSession(t *testing.T) {
+	t.Parallel()
+
+	m := newTestFocusModel(t)
+
+	// Get initial session count
+	initialSessions, err := m.store.ListSessions()
+	if err != nil {
+		t.Fatalf("failed to list sessions: %v", err)
+	}
+	initialCount := len(initialSessions)
+
+	// Press 's' to start timer
+	mm, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	m = mm
+
+	// Timer should be running
+	if m.mode != FocusModeRunning {
+		t.Fatalf("expected FocusModeRunning, got %v", m.mode)
+	}
+
+	// But NO session should be saved to DB yet
+	sessions, err := m.store.ListSessions()
+	if err != nil {
+		t.Fatalf("failed to list sessions: %v", err)
+	}
+
+	if len(sessions) != initialCount {
+		t.Fatalf("expected %d sessions (no new session saved on start), got %d", initialCount, len(sessions))
+	}
+
+	// currentSession should track the in-memory session
+	if m.currentSession == nil {
+		t.Fatalf("expected currentSession to be set for tracking")
+	}
+}
+
+// TestFocusCancelDoesNotSaveSession verifies that cancelling a session
+// does not save anything to the database.
+func TestFocusCancelDoesNotSaveSession(t *testing.T) {
+	t.Parallel()
+
+	m := newTestFocusModel(t)
+
+	// Get initial session count
+	initialSessions, _ := m.store.ListSessions()
+	initialCount := len(initialSessions)
+
+	// Start then cancel
+	mm, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	m = mm
+	mm, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
+	m = mm
+
+	// Should be back to idle
+	if m.mode != FocusModeIdle {
+		t.Fatalf("expected FocusModeIdle after cancel, got %v", m.mode)
+	}
+
+	// No session should have been saved
+	sessions, _ := m.store.ListSessions()
+	if len(sessions) != initialCount {
+		t.Fatalf("expected %d sessions (cancelled session should not be saved), got %d", initialCount, len(sessions))
+	}
+}

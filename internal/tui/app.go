@@ -453,9 +453,18 @@ func (m *Model) helpModalView() string {
 //   - Application title with ASCII art
 //   - List of available screens with styled shortcuts
 //   - Keyboard shortcuts reference
+//
+// Phase 5: Responsive layout
+//   - Uses smaller logo on narrow terminals (< 72 chars)
+//   - Prevents overflow on small terminal sizes
 func (m *Model) homeView() string {
-	// ASCII art logo
-	logo := styles.LogoStyle.Render(styles.LogoASCII)
+	// ASCII art logo - use small version on narrow terminals
+	var logo string
+	if m.width >= styles.LogoMinWidth {
+		logo = styles.LogoStyle.Render(styles.LogoASCII)
+	} else {
+		logo = styles.LogoStyle.Render(styles.LogoASCIISmall)
+	}
 
 	// Subtitle
 	subtitle := styles.SubtitleStyle.Render("Your unified terminal productivity system")

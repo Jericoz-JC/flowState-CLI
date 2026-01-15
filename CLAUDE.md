@@ -17,9 +17,11 @@
 | v0.1.5 | 2 | ✅ Complete | Focus Timer UX Enhancement |
 | v0.1.6 | 3 | ✅ Complete | Todos Notion-Inspired Overhaul |
 | v0.1.7 | 4 | ✅ Complete | Bug Fixes & UX Polish |
-| v0.1.8 | 5 | 🔄 Next | Focus Screen Visual Overhaul |
-| v0.1.9 | 6 | ⏳ Pending | Unified Theme & Design System |
-| v0.2.0 | 7 | ⏳ Pending | Final Polish & Documentation |
+| v0.1.8 | 5 | 🔄 In Progress | Critical Bug Fixes & Layout Issues |
+| v0.1.9 | 6 | ⏳ Pending | Notes System Overhaul |
+| v0.1.10 | 7 | ⏳ Pending | Focus Screen Visual Overhaul |
+| v0.1.11 | 8 | ⏳ Pending | Unified Theme & Design System |
+| v0.2.0 | 9 | ⏳ Pending | Final Polish & Documentation |
 
 ---
 
@@ -145,8 +147,88 @@
 
 ---
 
-## Phase 5: Focus Screen Visual Overhaul
-**Version:** v0.1.8 | **Status:** Pending
+## Phase 5: Critical Bug Fixes & Layout Issues
+**Version:** v0.1.8 | **Status:** In Progress
+
+### Functional Bug Fixes
+
+#### Todo Module - Title Bug
+- [x] Added comprehensive test suite for todo create flow (todos_test.go)
+- [x] Verified title input captures keystrokes correctly
+- [x] Verified title saves properly on Enter
+- Note: Core functionality verified working - issue may be display-specific
+
+#### Focus Session - Auto-Save & Navigation
+- [x] Disabled auto-save on Focus session start
+- [x] Sessions now only save to DB when completed (not on start)
+- [x] Cancelled sessions are discarded without saving
+- [x] Users can freely navigate/adjust before starting timer
+- [x] Added tests: `TestFocusStartDoesNotSaveSession`, `TestFocusCancelDoesNotSaveSession`
+
+### Visual & Layout Fixes
+
+#### Home Page ASCII Art
+- [x] Added responsive logo system - small logo for terminals < 72 chars
+- [x] Added `LogoASCIISmall` constant for narrow terminals
+- [x] Added `LogoMinWidth` constant (72) for responsive switching
+- [x] Removed "productivity reimagined" tagline from logo
+
+#### TUI Layout & Alignment
+- [x] Responsive logo prevents overflow on narrow terminals
+- [x] Home view now checks terminal width before rendering logo
+- Note: Further alignment issues may need visual testing
+
+#### Copy Cleanup
+- [x] Removed "✦ productivity reimagined ✦" line from ASCII art
+
+### Files Modified
+- `internal/tui/screens/focus.go` - Auto-save disable, sessions save on completion only
+- `internal/tui/screens/focus_test.go` - Added 2 new tests for auto-save behavior
+- `internal/tui/screens/todos_test.go` - NEW: 6 tests for todo create flow
+- `internal/tui/app.go` - Responsive logo rendering based on terminal width
+- `internal/tui/styles/theme.go` - Added small logo, removed tagline
+
+### Tests Added
+- `TestFocusStartDoesNotSaveSession` - verifies no DB save on timer start
+- `TestFocusCancelDoesNotSaveSession` - verifies cancelled sessions not saved
+- `TestTodosScreenRender` - basic render test
+- `TestTodosCreateModeEntry` - verifies 'c' enters create mode
+- `TestTodosTitleInputCapture` - verifies keystrokes captured in title
+- `TestTodosCreateAndSave` - verifies full create and save flow
+- `TestTodosEscCancelsCreate` - verifies Esc cancels create
+- `TestTodosTabSwitchesFocus` - verifies Tab toggles title/description focus
+
+---
+
+## Phase 6: Notes System Overhaul
+**Version:** v0.1.9 | **Status:** Pending
+
+### Writing Format Improvements
+- [ ] Shift to standard, intuitive writing format
+- [ ] Consider Markdown-lite or standard text blocks
+- [ ] Improve text editing experience
+
+### Tagging Engine Overhaul
+- [ ] Fix broken @tag and #tag functionality
+- [ ] Implement "Quick-Tag" creation for rapid categorization
+  - Examples: `Math 126`, `Claude Projects`, `Work`
+- [ ] Add Toggle List view to filter notes by specific tags
+- [ ] Tag autocomplete suggestions
+
+### Contextual Saving
+- [ ] Improve save logic for intuitive note linking
+- [ ] Link notes to specific product, project, or class tag upon creation
+- [ ] Tag-based organization on note creation screen
+
+### Files to Modify
+- `internal/tui/screens/notes.go` - Major overhaul
+- `internal/models/note.go` - Tag model updates
+- `internal/storage/` - Tag persistence
+
+---
+
+## Phase 7: Focus Screen Visual Overhaul
+**Version:** v0.1.10 | **Status:** Pending
 
 ### Enhanced Timer Display
 - Large ASCII art numbers for countdown
@@ -170,8 +252,8 @@
 
 ---
 
-## Phase 6: Unified Theme & Design System
-**Version:** v0.1.9 | **Status:** Pending
+## Phase 8: Unified Theme & Design System
+**Version:** v0.1.11 | **Status:** Pending
 
 ### Charmbracelet Library Integration
 ```go
@@ -207,7 +289,7 @@ github.com/charmbracelet/harmonica // Animations
 
 ---
 
-## Phase 7: Final Polish & Documentation
+## Phase 9: Final Polish & Documentation
 **Version:** v0.2.0 | **Status:** Pending
 
 ### Cross-Screen Consistency Audit
@@ -236,11 +318,14 @@ github.com/charmbracelet/harmonica // Animations
 | `npm/install.js` | Binary download script |
 | `npm/package.json` | NPM package config |
 | `.goreleaser.yaml` | Release build config |
+| `internal/tui/app.go` | Main app, layout, navigation |
+| `internal/tui/screens/home.go` | Home screen with ASCII art |
 | `internal/tui/screens/focus.go` | Focus/Pomodoro screen |
 | `internal/tui/screens/todos.go` | Todos screen |
-| `internal/tui/screens/notes.go` | Notes screen (reference) |
+| `internal/tui/screens/notes.go` | Notes screen (Phase 6 overhaul) |
 | `internal/tui/styles/theme.go` | Theme system |
 | `internal/tui/components/helpbar.go` | Help bar hints |
+| `internal/models/note.go` | Note model with tags |
 
 ---
 

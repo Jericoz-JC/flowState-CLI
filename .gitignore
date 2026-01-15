@@ -47,3 +47,4 @@ config.yaml
 
 # GoReleaser build output
 dist/
+.claude/
