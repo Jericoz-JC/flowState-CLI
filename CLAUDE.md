@@ -2,10 +2,10 @@
 
 > This file tracks the current development plan and progress. Updated after each phase completion.
 
-## Current Status: Phase 4 Complete, Ready for v0.1.7 Release
+## Current Status: Phase 4 Complete, v0.1.7 Released
 **Last Updated:** January 14, 2026
-**Current Version:** v0.1.6
-**Next Target:** v0.1.7 (implementation complete, needs release)
+**Current Version:** v0.1.7
+**Next Target:** v0.1.8
 
 ---
 
@@ -138,6 +138,10 @@
 ### Tests
 - All existing tests pass
 - Build succeeds with no errors
+
+### Release
+- Tag: v0.1.7
+- Release: https://github.com/Jericoz-JC/flowState-CLI/releases/tag/v0.1.7
 
 ---
 
