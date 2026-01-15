@@ -24,9 +24,14 @@ jobs:
 
       - name: Download Go modules
         run: go mod download
+        env:
+          GOPROXY: https://proxy.golang.org,direct
 
       - name: Verify modules
         run: go mod verify
+
+      - name: Test build
+        run: go build -v ./...
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6

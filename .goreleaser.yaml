@@ -7,6 +7,7 @@ builds:
     binary: flowstate
     env:
       - CGO_ENABLED=0
+    mod_timestamp: '{{ .CommitTimestamp }}'
     goos:
       - linux
       - windows
@@ -14,6 +15,10 @@ builds:
     goarch:
       - amd64
       - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
 
 archives:
   - name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}"
