@@ -350,20 +350,23 @@ For each phase:
 3. Run full test suite: `go test ./...`
 4. Update CLAUDE.md with progress
 5. Update README.md with new features
-6. Commit with descriptive message
-7. Push to main AND create/push tag to trigger release:
+6. **Update `npm/package.json` version** to match the new version
+7. Commit with descriptive message
+8. Push to main AND create/push tag to trigger release:
    ```bash
    git push origin main
    git tag v0.1.X
    git push origin v0.1.X
    ```
-8. CI/CD automatically:
+9. CI/CD automatically:
    - Builds binaries for all 6 platforms
    - Creates GitHub release with binaries
    - Publishes to npm
-9. Verify installation on all platforms
+10. Verify installation on all platforms
 
-**IMPORTANT:** Always tag and push after completing a phase. The CI/CD pipeline only triggers on tag push (`v*`), not on main branch push.
+**IMPORTANT:**
+- Always tag and push after completing a phase. The CI/CD pipeline only triggers on tag push (`v*`), not on main branch push.
+- **Always update `npm/package.json` version** before tagging! npm publish will fail if the version already exists.
 
 ---
 
