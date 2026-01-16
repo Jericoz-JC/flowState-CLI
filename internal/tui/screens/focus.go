@@ -465,24 +465,8 @@ func (m *FocusModel) renderTimer() string {
 		m.helpBar.SetHints(components.FocusBreakHints)
 	}
 
-	// Phase indicator
-	phaseStyle := lipgloss.NewStyle().
-		Foreground(styles.PrimaryColor).
-		Bold(true).
-		Padding(0, 1)
-
-	var phaseText string
-	switch m.mode {
-	case FocusModeIdle:
-		phaseText = "Ready to Focus"
-	case FocusModeRunning:
-		phaseText = "🍅 Work Session"
-	case FocusModePaused:
-		phaseText = "⏸ Paused"
-	case FocusModeBreak:
-		phaseText = "☕ Break Time"
-	}
-	phase := phaseStyle.Render(phaseText)
+	// Mode-specific styled header
+	modeHeader := m.renderModeHeader()
 
 	// Large ASCII timer display
 	timer := m.renderLargeTimer()
@@ -490,26 +474,121 @@ func (m *FocusModel) renderTimer() string {
 	// Progress bar
 	progress := m.renderProgressBar()
 
-	// Stats summary
+	// Session count indicator (only show in idle or running)
+	sessionIndicator := ""
+	if m.mode == FocusModeIdle || m.mode == FocusModeRunning || m.mode == FocusModePaused {
+		sessionIndicator = m.renderSessionIndicator()
+	}
+
+	// Stats summary with activity chart
 	stats := m.renderStatsSummary()
 
 	// Build content
-	content := lipgloss.JoinVertical(
-		lipgloss.Center,
+	contentParts := []string{
 		m.header.View(),
 		"",
-		phase,
+		modeHeader,
 		"",
 		timer,
 		"",
 		progress,
+	}
+
+	if sessionIndicator != "" {
+		contentParts = append(contentParts, "", sessionIndicator)
+	}
+
+	contentParts = append(contentParts,
 		"",
 		stats,
 		"",
 		m.helpBar.View(),
 	)
 
+	content := lipgloss.JoinVertical(
+		lipgloss.Center,
+		contentParts...,
+	)
+
 	return styles.PanelStyle.Render(content)
+}
+
+// renderModeHeader renders a styled header based on current mode.
+func (m *FocusModel) renderModeHeader() string {
+	var headerText string
+	var headerColor lipgloss.Color
+	var icon string
+
+	switch m.mode {
+	case FocusModeIdle:
+		headerText = "R E A D Y   T O   F O C U S"
+		headerColor = styles.PrimaryColor
+		icon = "✦"
+	case FocusModeRunning:
+		headerText = "W O R K   S E S S I O N"
+		headerColor = styles.SuccessColor
+		icon = "🍅"
+	case FocusModePaused:
+		headerText = "P A U S E D"
+		headerColor = styles.WarningColor
+		icon = "⏸"
+	case FocusModeBreak:
+		headerText = "B R E A K   T I M E"
+		headerColor = styles.SecondaryColor
+		icon = "☕"
+	}
+
+	headerStyle := lipgloss.NewStyle().
+		Foreground(headerColor).
+		Bold(true).
+		Padding(0, 2)
+
+	borderStyle := lipgloss.NewStyle().
+		Foreground(styles.BorderColor)
+
+	// Build the header box
+	innerWidth := len(headerText) + 8
+	topBorder := borderStyle.Render("╔" + repeatChar("═", innerWidth) + "╗")
+	bottomBorder := borderStyle.Render("╚" + repeatChar("═", innerWidth) + "╝")
+
+	content := fmt.Sprintf("  %s  %s  %s  ", icon, headerText, icon)
+	middleLine := borderStyle.Render("║") + headerStyle.Render(content) + borderStyle.Render("║")
+
+	return lipgloss.JoinVertical(
+		lipgloss.Center,
+		topBorder,
+		middleLine,
+		bottomBorder,
+	)
+}
+
+// renderSessionIndicator renders the session count indicator for today.
+func (m *FocusModel) renderSessionIndicator() string {
+	if m.stats == nil {
+		m.LoadHistory()
+	}
+
+	todaySessions := 0
+	if m.stats != nil {
+		todaySessions = m.stats.TodaySessions
+	}
+
+	label := lipgloss.NewStyle().
+		Foreground(styles.MutedColor).
+		Render("Today's Sessions: ")
+
+	indicator := styles.SessionCountIndicator(todaySessions, 8)
+
+	return lipgloss.JoinHorizontal(lipgloss.Center, label, indicator)
+}
+
+// repeatChar returns a string with the character repeated n times.
+func repeatChar(char string, n int) string {
+	result := ""
+	for i := 0; i < n; i++ {
+		result += char
+	}
+	return result
 }
 
 // renderLargeTimer renders the timer in large ASCII-style digits.
@@ -518,39 +597,31 @@ func (m *FocusModel) renderLargeTimer() string {
 	seconds := int(m.remaining.Seconds()) % 60
 	timeStr := fmt.Sprintf("%02d:%02d", minutes, seconds)
 
-	timerStyle := styles.TimerStyle
-	if m.mode == FocusModeRunning {
-		timerStyle = styles.TimerActiveStyle
-	} else if m.mode == FocusModeBreak {
-		timerStyle = lipgloss.NewStyle().
-			Foreground(styles.SecondaryColor).
-			Bold(true).
-			Padding(1, 4)
-	} else if m.mode == FocusModePaused {
-		timerStyle = lipgloss.NewStyle().
-			Foreground(styles.WarningColor).
-			Bold(true).
-			Padding(1, 4)
+	// Determine color based on mode
+	var timerColor lipgloss.Color
+	switch m.mode {
+	case FocusModeRunning:
+		timerColor = styles.SuccessColor // Cyan for active
+	case FocusModeBreak:
+		timerColor = styles.SecondaryColor // Teal for break
+	case FocusModePaused:
+		timerColor = styles.WarningColor // Yellow for paused
+	default:
+		timerColor = styles.PrimaryColor // Lavender for idle
 	}
 
-	// Create large timer display
-	largeTimerStyle := lipgloss.NewStyle().
-		Foreground(timerStyle.GetForeground()).
-		Bold(true).
-		Padding(1, 2)
+	// Render large ASCII art timer
+	asciiTimer := styles.RenderASCIITime(timeStr, timerColor)
 
-	// Simple but large representation
-	timerDisplay := fmt.Sprintf(`
-    ╔═══════════════════╗
-    ║                   ║
-    ║      %s       ║
-    ║                   ║
-    ╚═══════════════════╝`, timeStr)
+	// Center the timer
+	timerStyle := lipgloss.NewStyle().
+		Padding(1, 2).
+		Align(lipgloss.Center)
 
-	return largeTimerStyle.Render(timerDisplay)
+	return timerStyle.Render(asciiTimer)
 }
 
-// renderProgressBar renders a visual progress bar with vaporwave gradient.
+// renderProgressBar renders a visual progress bar with gradient effect.
 func (m *FocusModel) renderProgressBar() string {
 	if m.totalDuration == 0 {
 		return ""
@@ -565,8 +636,8 @@ func (m *FocusModel) renderProgressBar() string {
 		progress = 1
 	}
 
-	// Use vaporwave progress bar with gradient effect
-	bar := styles.VaporwaveProgressBar(progress, 30)
+	// Use the new progress ring style
+	bar := styles.RenderProgressRing(progress, 40)
 
 	percentageStyle := lipgloss.NewStyle().Foreground(styles.SecondaryColor).Bold(true)
 	percentage := percentageStyle.Render(fmt.Sprintf(" %d%%", int(progress*100)))
@@ -578,7 +649,7 @@ func (m *FocusModel) renderProgressBar() string {
 	)
 }
 
-// renderStatsSummary renders a brief statistics summary.
+// renderStatsSummary renders a brief statistics summary with activity chart.
 func (m *FocusModel) renderStatsSummary() string {
 	if m.stats == nil {
 		// Load stats if not loaded
@@ -603,16 +674,65 @@ func (m *FocusModel) renderStatsSummary() string {
 		totalMinutes = m.stats.TotalFocusMinutes
 	}
 
+	// Stats line
 	statsContent := lipgloss.JoinHorizontal(
 		lipgloss.Center,
 		statItemStyle.Render("Today: ")+statValueStyle.Render(fmt.Sprintf("%d", todaySessions)),
 		statsStyle.Render(" │ "),
-		statItemStyle.Render("Streak: ")+statValueStyle.Render(fmt.Sprintf("%d days", streak)),
+		statItemStyle.Render("Streak: ")+statValueStyle.Render(fmt.Sprintf("%d days 🔥", streak)),
 		statsStyle.Render(" │ "),
 		statItemStyle.Render("Total: ")+statValueStyle.Render(fmt.Sprintf("%dh %dm", totalMinutes/60, totalMinutes%60)),
 	)
 
+	// 7-day activity chart (show in idle mode only to keep running view clean)
+	if m.mode == FocusModeIdle {
+		chartData := m.getLast7DaysActivity()
+		if len(chartData) > 0 {
+			chartTitle := lipgloss.NewStyle().
+				Foreground(styles.MutedColor).
+				Render("Last 7 Days:")
+
+			chart := styles.RenderMiniBarChart(chartData, 4, 28)
+
+			return lipgloss.JoinVertical(
+				lipgloss.Center,
+				statsContent,
+				"",
+				chartTitle,
+				chart,
+			)
+		}
+	}
+
 	return statsContent
+}
+
+// getLast7DaysActivity returns session counts for the last 7 days.
+func (m *FocusModel) getLast7DaysActivity() []int {
+	if len(m.sessions) == 0 {
+		return nil
+	}
+
+	// Calculate session counts per day for last 7 days
+	counts := make([]int, 7)
+	now := time.Now()
+
+	for _, session := range m.sessions {
+		if session.Status != models.SessionStatusCompleted {
+			continue
+		}
+
+		daysAgo := int(now.Sub(session.StartTime).Hours() / 24)
+		if daysAgo >= 0 && daysAgo < 7 {
+			// Index 0 = 6 days ago, Index 6 = today
+			idx := 6 - daysAgo
+			if idx >= 0 && idx < 7 {
+				counts[idx]++
+			}
+		}
+	}
+
+	return counts
 }
 
 // renderHistory renders the session history view.

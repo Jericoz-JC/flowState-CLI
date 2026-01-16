@@ -1,6 +1,6 @@
 {
   "name": "flowstate-cli",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "A unified terminal productivity system for notes, todos, and focus sessions with semantic search",
   "bin": {
     "flowstate": "bin/flowstate"

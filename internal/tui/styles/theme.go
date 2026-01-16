@@ -455,3 +455,280 @@ func FormatTags(tags []string) string {
 	}
 	return result.String()
 }
+
+// ASCII art digit definitions - 5 lines tall, 6 chars wide
+// Each digit is represented as 5 strings (lines)
+var asciiDigits = map[rune][]string{
+	'0': {
+		"█████╗ ",
+		"██╔██║ ",
+		"█╔╝██║ ",
+		"██╔██║ ",
+		"╚████╝ ",
+	},
+	'1': {
+		" ██╗   ",
+		"███║   ",
+		"╚██║   ",
+		" ██║   ",
+		"███╝   ",
+	},
+	'2': {
+		"█████╗ ",
+		"╚═══██╗",
+		" ████╔╝",
+		"██╔══╝ ",
+		"██████╗",
+	},
+	'3': {
+		"█████╗ ",
+		"╚═══██╗",
+		" ████╔╝",
+		"╚═══██╗",
+		"█████╔╝",
+	},
+	'4': {
+		"██╗██╗ ",
+		"██║██║ ",
+		"██████╗",
+		"╚══██║ ",
+		"   ██╝ ",
+	},
+	'5': {
+		"██████╗",
+		"██╔═══╝",
+		"█████╗ ",
+		"╚═══██╗",
+		"█████╔╝",
+	},
+	'6': {
+		"█████╗ ",
+		"██╔═══╝",
+		"█████╗ ",
+		"██╔═██╗",
+		"╚████╔╝",
+	},
+	'7': {
+		"██████╗",
+		"╚═══██║",
+		"   ██╔╝",
+		"  ██╔╝ ",
+		"  ██║  ",
+	},
+	'8': {
+		"█████╗ ",
+		"██╔═██╗",
+		"╚███╔╝ ",
+		"██╔═██╗",
+		"╚████╔╝",
+	},
+	'9': {
+		"█████╗ ",
+		"██╔═██╗",
+		"╚████║ ",
+		"╚══██║ ",
+		"█████╔╝",
+	},
+	':': {
+		"   ",
+		" █ ",
+		"   ",
+		" █ ",
+		"   ",
+	},
+}
+
+// RenderASCIITime renders a time string (e.g., "25:00") as large ASCII art
+// Returns a slice of strings, one per line
+func RenderASCIITime(timeStr string, color lipgloss.Color) string {
+	lines := make([]string, 5)
+
+	style := lipgloss.NewStyle().Foreground(color).Bold(true)
+
+	for _, char := range timeStr {
+		digit, ok := asciiDigits[char]
+		if !ok {
+			continue
+		}
+		for i := 0; i < 5; i++ {
+			lines[i] += digit[i]
+		}
+	}
+
+	// Apply styling to each line
+	var result strings.Builder
+	for i, line := range lines {
+		result.WriteString(style.Render(line))
+		if i < 4 {
+			result.WriteString("\n")
+		}
+	}
+
+	return result.String()
+}
+
+// ASCII art for session mode indicators
+const (
+	WorkModeASCII = `
+╔══════════════════════════════════════╗
+║  🍅  W O R K   S E S S I O N  🍅    ║
+╚══════════════════════════════════════╝`
+
+	BreakModeASCII = `
+╔══════════════════════════════════════╗
+║  ☕  B R E A K   T I M E  ☕         ║
+╚══════════════════════════════════════╝`
+
+	IdleModeASCII = `
+╔══════════════════════════════════════╗
+║  ✦  R E A D Y   T O   F O C U S  ✦  ║
+╚══════════════════════════════════════╝`
+
+	PausedModeASCII = `
+╔══════════════════════════════════════╗
+║  ⏸  P A U S E D  ⏸                  ║
+╚══════════════════════════════════════╝`
+)
+
+// RenderProgressRing renders a circular-style progress indicator
+// using ASCII characters for terminal display
+func RenderProgressRing(progress float64, width int) string {
+	if width <= 0 {
+		return ""
+	}
+
+	// Characters for different fill levels
+	chars := []string{"░", "▒", "▓", "█"}
+
+	filled := int(float64(width) * progress)
+	if filled > width {
+		filled = width
+	}
+
+	// Create gradient effect
+	var result strings.Builder
+
+	// Opening bracket
+	bracketStyle := lipgloss.NewStyle().Foreground(BorderColor)
+	result.WriteString(bracketStyle.Render("【"))
+
+	for i := 0; i < width; i++ {
+		var char string
+		var style lipgloss.Style
+
+		if i < filled {
+			// Filled section with gradient colors
+			gradientPos := float64(i) / float64(width)
+			if gradientPos < 0.5 {
+				style = lipgloss.NewStyle().Foreground(SecondaryColor) // Cyan
+			} else {
+				style = lipgloss.NewStyle().Foreground(AccentColor) // Pink
+			}
+			char = chars[3] // Full block
+		} else {
+			// Empty section
+			style = lipgloss.NewStyle().Foreground(SurfaceColor)
+			char = chars[0]
+		}
+		result.WriteString(style.Render(char))
+	}
+
+	// Closing bracket
+	result.WriteString(bracketStyle.Render("】"))
+
+	return result.String()
+}
+
+// RenderMiniBarChart renders a small bar chart for the last 7 days
+func RenderMiniBarChart(values []int, maxHeight int, width int) string {
+	if len(values) == 0 || maxHeight <= 0 {
+		return ""
+	}
+
+	// Find max value for scaling
+	maxVal := 1
+	for _, v := range values {
+		if v > maxVal {
+			maxVal = v
+		}
+	}
+
+	// Calculate bar width
+	barWidth := width / len(values)
+	if barWidth < 1 {
+		barWidth = 1
+	}
+
+	// Build chart from top to bottom
+	var lines []string
+	for row := maxHeight; row >= 1; row-- {
+		var line strings.Builder
+		threshold := float64(row) / float64(maxHeight) * float64(maxVal)
+
+		for i, v := range values {
+			barStyle := lipgloss.NewStyle().Foreground(SecondaryColor)
+			if i == len(values)-1 {
+				// Today's bar in accent color
+				barStyle = lipgloss.NewStyle().Foreground(AccentColor)
+			}
+
+			emptyStyle := lipgloss.NewStyle().Foreground(SurfaceColor)
+
+			if float64(v) >= threshold {
+				line.WriteString(barStyle.Render(strings.Repeat("█", barWidth)))
+			} else {
+				line.WriteString(emptyStyle.Render(strings.Repeat(" ", barWidth)))
+			}
+
+			// Add space between bars
+			if i < len(values)-1 {
+				line.WriteString(" ")
+			}
+		}
+		lines = append(lines, line.String())
+	}
+
+	// Add day labels
+	dayLabels := []string{"M", "T", "W", "T", "F", "S", "S"}
+	if len(values) <= len(dayLabels) {
+		var labelLine strings.Builder
+		labelStyle := lipgloss.NewStyle().Foreground(MutedColor)
+		for i := 0; i < len(values); i++ {
+			dayIndex := (7 - len(values) + i) % 7
+			padding := (barWidth - 1) / 2
+			labelLine.WriteString(strings.Repeat(" ", padding))
+			labelLine.WriteString(labelStyle.Render(dayLabels[dayIndex]))
+			labelLine.WriteString(strings.Repeat(" ", barWidth-padding-1))
+			if i < len(values)-1 {
+				labelLine.WriteString(" ")
+			}
+		}
+		lines = append(lines, labelLine.String())
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+// SessionCountIndicator renders visual dots for completed sessions today
+func SessionCountIndicator(count, max int) string {
+	if max <= 0 {
+		max = 8
+	}
+
+	var result strings.Builder
+	completedStyle := lipgloss.NewStyle().Foreground(SuccessColor)
+	emptyStyle := lipgloss.NewStyle().Foreground(SurfaceColor)
+
+	for i := 0; i < max; i++ {
+		if i < count {
+			result.WriteString(completedStyle.Render("●"))
+		} else {
+			result.WriteString(emptyStyle.Render("○"))
+		}
+		if i < max-1 {
+			result.WriteString(" ")
+		}
+	}
+
+	return result.String()
+}
