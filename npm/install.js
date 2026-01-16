@@ -30,8 +30,43 @@ function getPlatformInfo() {
   const goPlatform = platformMap[platform];
   const goArch = archMap[arch];
 
+  // Handle 32-bit Node.js on 64-bit systems (common Windows issue)
+  if (!goArch && (arch === "ia32" || arch === "x86")) {
+    console.error("");
+    console.error("================================================================");
+    console.error("  ERROR: 32-bit Node.js detected (architecture: " + arch + ")");
+    console.error("================================================================");
+    console.error("");
+    console.error("  flowstate-cli requires 64-bit Node.js.");
+    console.error("");
+    console.error("  You're likely running 32-bit Node.js on a 64-bit system.");
+    console.error("  This commonly happens when the wrong installer was downloaded.");
+    console.error("");
+    console.error("  To fix this:");
+    console.error("    1. Uninstall your current Node.js");
+    console.error("    2. Download 64-bit Node.js from: https://nodejs.org/");
+    console.error("       - Windows: Choose 'Windows Installer (.msi)' for 64-bit");
+    console.error("       - Look for 'x64' in the filename");
+    console.error("    3. Install and retry: npm install -g flowstate-cli");
+    console.error("");
+    console.error("  Alternatively, download the binary directly from:");
+    console.error("    https://github.com/" + REPO + "/releases/tag/v" + VERSION);
+    console.error("");
+    process.exit(1);
+  }
+
   if (!goPlatform || !goArch) {
-    console.error(`Unsupported platform: ${platform}-${arch}`);
+    console.error("");
+    console.error("Unsupported platform: " + platform + "-" + arch);
+    console.error("");
+    console.error("flowstate-cli supports:");
+    console.error("  - Windows (x64, arm64)");
+    console.error("  - macOS (x64 Intel, arm64 Apple Silicon)");
+    console.error("  - Linux (x64, arm64)");
+    console.error("");
+    console.error("You can request support for your platform at:");
+    console.error("  https://github.com/" + REPO + "/issues");
+    console.error("");
     process.exit(1);
   }
 
@@ -129,7 +164,39 @@ async function main() {
       fs.chmodSync(binaryPath, 0o755);
     }
 
-    console.log(`flowstate installed successfully to ${binaryPath}`);
+    console.log("");
+    console.log("================================================================");
+    console.log("  flowstate v" + VERSION + " installed successfully!");
+    console.log("================================================================");
+    console.log("");
+    console.log("  To run flowstate:");
+    console.log("    flowstate");
+    console.log("");
+    if (isWindows) {
+      console.log("  If 'flowstate' is not recognized, try:");
+      console.log("    npx flowstate");
+      console.log("");
+      console.log("  Or add npm global bin to your PATH:");
+      console.log("    1. Run: npm config get prefix");
+      console.log("    2. Add the returned path to your system PATH");
+      console.log("");
+    } else {
+      console.log("  If 'flowstate' command is not found, try:");
+      console.log("");
+      console.log("    Option 1 - Use npx (always works):");
+      console.log("      npx flowstate");
+      console.log("");
+      console.log("    Option 2 - Add npm bin to PATH (recommended):");
+      console.log("      # For bash/zsh, add to ~/.bashrc or ~/.zshrc:");
+      console.log("      export PATH=\"$(npm config get prefix)/bin:$PATH\"");
+      console.log("");
+      console.log("      # Then reload your shell:");
+      console.log("      source ~/.bashrc  # or source ~/.zshrc");
+      console.log("");
+      console.log("    Option 3 - Run directly:");
+      console.log("      $(npm config get prefix)/bin/flowstate");
+      console.log("");
+    }
   } catch (error) {
     console.error("Installation failed:", error.message);
     console.error("");

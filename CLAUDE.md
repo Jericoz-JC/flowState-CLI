@@ -3,9 +3,9 @@
 > This file tracks the current development plan and progress. Updated after each phase completion.
 
 ## Current Status: Phase 6 Complete, v0.1.9 Released
-**Last Updated:** January 15, 2026
+**Last Updated:** January 16, 2026
 **Current Version:** v0.1.9
-**Next Target:** v0.1.10
+**Next Target:** v0.1.10 (NPM Install Fixes)
 
 ---
 
@@ -19,9 +19,74 @@
 | v0.1.7 | 4 | ✅ Complete | Bug Fixes & UX Polish |
 | v0.1.8 | 5 | ✅ Complete | Critical Bug Fixes & Layout Issues |
 | v0.1.9 | 6 | ✅ Complete | Notes System Overhaul |
-| v0.1.10 | 7 | ⏳ Pending | Focus Screen Visual Overhaul |
-| v0.1.11 | 8 | ⏳ Pending | Unified Theme & Design System |
-| v0.2.0 | 9 | ⏳ Pending | Final Polish & Documentation |
+| v0.1.10 | 7 | 🔴 Next | NPM Install Fixes (ia32, Linux PATH) |
+| v0.1.11 | 8 | ⏳ Pending | Focus Screen Visual Overhaul |
+| v0.1.12 | 9 | ⏳ Pending | Unified Theme & Design System |
+| v0.1.13 | 10 | ⏳ Pending | Technical Debt Cleanup |
+| v0.2.0 | 11 | ⏳ Pending | Final Polish & Documentation |
+
+---
+
+## Development Workflow (MANDATORY)
+
+### Test-Driven Development (TDD)
+
+**All new code MUST follow TDD. No exceptions.**
+
+#### The RED-GREEN-REFACTOR Cycle
+
+1. **RED**: Write a failing test first demonstrating desired behavior
+2. **VERIFY RED**: Run test, confirm it fails for the RIGHT reason (missing feature, not syntax error)
+3. **GREEN**: Implement the MINIMAL code to pass the test
+4. **VERIFY GREEN**: Run test, confirm it passes. Run ALL tests, nothing else breaks.
+5. **REFACTOR**: Clean up while maintaining green status
+
+#### Go Test Patterns
+
+```go
+// Table-driven tests (preferred)
+func TestParseWikilinks(t *testing.T) {
+    tests := []struct {
+        name     string
+        input    string
+        expected []string
+    }{
+        {"empty string", "", nil},
+        {"single wikilink", "see [[Note]]", []string{"Note"}},
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            result := parseWikilinks(tt.input)
+            if !reflect.DeepEqual(result, tt.expected) {
+                t.Errorf("got %v, want %v", result, tt.expected)
+            }
+        })
+    }
+}
+```
+
+#### Running Tests
+```bash
+go test ./...                    # All tests
+go test ./internal/tui/screens/  # Specific package
+go test -v ./...                 # Verbose
+go test -cover ./...             # With coverage
+```
+
+#### Red Flags - STOP and RESTART
+- You wrote production code before the test
+- The test passed immediately (didn't test anything new)
+- You can't explain why the test should fail
+
+### Systematic Debugging
+
+When fixing bugs:
+1. **Root Cause Investigation** - Read error, reproduce consistently, trace data flow
+2. **Pattern Analysis** - Find working examples, identify differences
+3. **Hypothesis Testing** - Single change at a time, verify results
+4. **Implementation** - Write failing test, implement fix, verify
+
+**Never propose fixes without understanding the root cause first.**
 
 ---
 
@@ -240,8 +305,128 @@
 
 ---
 
-## Phase 7: Focus Screen Visual Overhaul
-**Version:** v0.1.10 | **Status:** Pending
+## Phase 7: NPM Install Fixes 🔴 NEXT
+**Version:** v0.1.10 | **Status:** In Progress
+
+### Issues to Fix
+
+#### 1. ia32/x86 CPU Error on Windows
+**Problem**: Users with 32-bit Node.js on 64-bit Windows get unhelpful error:
+```
+Unsupported platform: win32-ia32
+```
+
+**Root Cause**: `npm/install.js` only maps `x64` and `arm64` in `archMap`. When 32-bit Node.js is installed, `process.arch` returns `ia32`.
+
+**Fix**: Add clear error message with instructions to install 64-bit Node.js.
+
+**Location**: `npm/install.js:23-34`
+
+#### 2. Linux SSH - Can't Run App After Install
+**Problem**: Users install via npm on Linux but `flowstate` command not found.
+
+**Root Cause**: npm global bin directory not in PATH.
+
+**Fix**: Show PATH setup instructions after successful install.
+
+**Location**: `npm/install.js` (success message)
+
+#### 3. Binary Not Found Error Handling
+**Problem**: If binary download fails silently, wrapper gives unhelpful error.
+
+**Fix**: Add existence check in `npm/bin/flowstate` with clear reinstall instructions.
+
+**Location**: `npm/bin/flowstate`
+
+#### 4. Dev Machine Old Version Conflict
+**Problem**: Running `flowstate` opens old version, `go build` gives latest.
+
+**Root Cause**: Old global npm install or PATH ordering.
+
+**Documentation**: Add troubleshooting section for PATH conflicts.
+
+### Checklist
+- [x] Update `npm/install.js` with ia32 error handling
+- [x] Add success message with PATH instructions for Linux
+- [x] Update `npm/bin/flowstate` with binary existence check
+- [x] Update `npm/package.json` version to 0.1.10
+- [ ] Test on Windows (64-bit Node)
+- [ ] Test on Linux
+- [ ] Test on macOS
+- [ ] Create release tag v0.1.10
+
+---
+
+## Technical Debt Analysis
+
+### Priority: High (Address before v0.2.0)
+
+#### 1. Placeholder Embedding System
+**Location**: `internal/embeddings/embedder.go:101-144`
+```go
+// embedSimple creates simple hash-based embeddings.
+// Future: Replace with ONNX inference
+func (e *Embedder) embedSimple(texts []string) ([][]float32, error)
+```
+**Issue**: Using character-weighted hash instead of real ML embeddings. Semantic search produces poor results.
+
+**Resolution**: Phase 10+ ONNX model integration (~90MB model).
+
+#### 2. Missing Test Coverage
+**Packages without tests**:
+- `internal/commands` - Command wrappers
+- `internal/config` - Configuration loading
+- `internal/models` - Data models
+- `internal/storage/qdrant` - Vector store (dead code)
+- `internal/tui/keymap` - Key bindings
+- `internal/tui/styles` - Theme
+
+**Current coverage**: 17 test files
+
+### Priority: Medium
+
+#### 3. Large Screen Files
+**Files**:
+- `notes.go` (~1,400 lines)
+- `todos.go` (~1,119 lines)
+
+**Issue**: Model, update logic, and view rendering all in one file.
+
+**Potential Refactor**: Extract common patterns (tag filtering, sort modes) into shared utilities.
+
+#### 4. Duplicate Vector Storage
+**Locations**:
+- `internal/storage/qdrant/vector_store.go` - In-memory (data lost on restart)
+- `internal/storage/sqlite/store.go` - SQLite-backed `note_vectors` table
+
+**Issue**: Qdrant package is effectively dead code.
+
+**Resolution**: Remove `qdrant/` package or document as development stub.
+
+### Priority: Low
+
+#### 5. TODO Comments in Code
+```
+notes.go:472:  // TODO: proper cursor handling
+notes.go:562:  // TODO: Show error message
+```
+Only 2 TODOs - relatively clean.
+
+#### 6. Error Handling in Main
+**Location**: `cmd/flowState/main.go`
+```go
+log.Fatalf("Failed to load config: %v", err)  // line 56
+log.Fatalf("Failed to create app: %v", err)   // line 62
+```
+Uses `log.Fatal` - prevents graceful shutdown but acceptable for CLI.
+
+#### 7. Hardcoded Strings
+Screen titles, help text, and UI labels scattered rather than centralized.
+
+---
+
+## Phase 8: Focus Screen Visual Overhaul
+**Version:** v0.1.11 | **Status:** Pending
 
 ### Enhanced Timer Display
 - Large ASCII art numbers for countdown
@@ -265,8 +450,8 @@
 
 ---
 
-## Phase 8: Unified Theme & Design System
-**Version:** v0.1.11 | **Status:** Pending
+## Phase 9: Unified Theme & Design System
+**Version:** v0.1.12 | **Status:** Pending
 
 ### Charmbracelet Library Integration
 ```go
@@ -302,7 +487,29 @@ github.com/charmbracelet/harmonica // Animations
 
 ---
 
-## Phase 9: Final Polish & Documentation
+## Phase 10: Technical Debt Cleanup
+**Version:** v0.1.13 | **Status:** Pending
+
+### High Priority Items
+- [ ] Add test coverage for `internal/commands`
+- [ ] Add test coverage for `internal/config`
+- [ ] Add test coverage for `internal/models`
+- [ ] Add test coverage for `internal/tui/keymap`
+- [ ] Add test coverage for `internal/tui/styles`
+- [ ] Remove or document `internal/storage/qdrant` package
+
+### Medium Priority Items
+- [ ] Extract common filter logic from `notes.go` and `todos.go`
+- [ ] Create shared `internal/tui/filters/` package
+- [ ] Fix TODO comments in `notes.go`
+
+### Optional
+- [ ] Centralize hardcoded strings
+- [ ] Improve error handling in `main.go`
+
+---
+
+## Phase 11: Final Polish & Documentation
 **Version:** v0.2.0 | **Status:** Pending
 
 ### Cross-Screen Consistency Audit

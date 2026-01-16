@@ -2,11 +2,31 @@
 
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 const isWindows = process.platform === 'win32';
 const binDir = __dirname;
 const binaryName = isWindows ? 'flowstate.exe' : 'flowstate';
 const binaryPath = path.join(binDir, binaryName);
+
+// Check if binary exists before trying to spawn
+if (!fs.existsSync(binaryPath)) {
+  console.error('');
+  console.error('ERROR: flowstate binary not found');
+  console.error('');
+  console.error('Expected location: ' + binaryPath);
+  console.error('');
+  console.error('This usually means the installation did not complete successfully.');
+  console.error('');
+  console.error('To fix this, try reinstalling:');
+  console.error('  npm uninstall -g flowstate-cli');
+  console.error('  npm install -g flowstate-cli');
+  console.error('');
+  console.error('If the problem persists, download the binary directly from:');
+  console.error('  https://github.com/Jericoz-JC/flowState-CLI/releases/latest');
+  console.error('');
+  process.exit(1);
+}
 
 const child = spawn(binaryPath, process.argv.slice(2), {
   stdio: 'inherit',
@@ -14,7 +34,21 @@ const child = spawn(binaryPath, process.argv.slice(2), {
 });
 
 child.on('error', (err) => {
-  console.error(`Failed to start flowstate: ${err.message}`);
+  console.error('');
+  console.error('Failed to start flowstate: ' + err.message);
+  console.error('');
+  if (err.code === 'EACCES') {
+    console.error('Permission denied. Try running:');
+    if (isWindows) {
+      console.error('  Run your terminal as Administrator');
+    } else {
+      console.error('  chmod +x "' + binaryPath + '"');
+    }
+  } else if (err.code === 'ENOENT') {
+    console.error('Binary not found. Try reinstalling:');
+    console.error('  npm uninstall -g flowstate-cli && npm install -g flowstate-cli');
+  }
+  console.error('');
   process.exit(1);
 });
 

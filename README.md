@@ -112,16 +112,20 @@ flowstate
 
 Download from [GitHub Releases](https://github.com/Jericoz-JC/flowState-CLI/releases/latest):
 
-| Platform | File |
-|----------|------|
-| Windows | `flowstate-windows-amd64.zip` |
-| macOS (Intel) | `flowstate-darwin-amd64.tar.gz` |
-| macOS (Apple Silicon) | `flowstate-darwin-arm64.tar.gz` |
-| Linux | `flowstate-linux-amd64.tar.gz` |
+| Platform | Architecture | File |
+|----------|--------------|------|
+| Windows | x64 | `flowstate-windows-amd64.zip` |
+| Windows | ARM64 | `flowstate-windows-arm64.zip` |
+| macOS | Intel (x64) | `flowstate-darwin-amd64.tar.gz` |
+| macOS | Apple Silicon (ARM64) | `flowstate-darwin-arm64.tar.gz` |
+| Linux | x64 | `flowstate-linux-amd64.tar.gz` |
+| Linux | ARM64 | `flowstate-linux-arm64.tar.gz` |
 
 Extract and run:
 - macOS/Linux: `./flowstate`
 - Windows: `.\flowstate.exe`
+
+> **Note**: 32-bit systems are not supported. If you get an "ia32" error during npm install, you have 32-bit Node.js installed. Please install [64-bit Node.js](https://nodejs.org/).
 
 #### Option C: Go install
 
@@ -282,10 +286,28 @@ npm publish
 - Test the npm package locally before publishing: `npm pack && npm install -g flowstate-cli-X.Y.Z.tgz`
 
 ### Troubleshooting npm Installation
-If users report 404 errors during `npm install`:
+
+**404 errors during install:**
 1. Verify the GitHub release exists at `https://github.com/Jericoz-JC/flowState-CLI/releases/tag/vX.Y.Z`
-2. Check that all 6 platform binaries are uploaded (darwin-amd64, darwin-arm64, linux-amd64, linux-arm64, windows-amd64, windows-arm64)
+2. Check that all 6 platform binaries are uploaded
 3. Ensure npm package version matches the release tag exactly
+
+**"ia32" or "x86" architecture error:**
+- You have 32-bit Node.js installed on a 64-bit system
+- Uninstall Node.js and install the 64-bit version from [nodejs.org](https://nodejs.org/)
+
+**"flowstate: command not found" (Linux/macOS):**
+- npm global bin directory is not in your PATH
+- Quick fix: Use `npx flowstate` instead
+- Permanent fix: Add to your `~/.bashrc` or `~/.zshrc`:
+  ```bash
+  export PATH="$(npm config get prefix)/bin:$PATH"
+  ```
+
+**Old version runs instead of new version:**
+- You have an old global installation conflicting
+- Fix: `npm uninstall -g flowstate-cli && npm install -g flowstate-cli`
+- Or check PATH order: `which flowstate` (Linux/macOS) or `where flowstate` (Windows)
 
 ## Project Structure
 
