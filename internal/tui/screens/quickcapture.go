@@ -22,12 +22,13 @@ import (
 
 // QuickCaptureModel implements a quick note capture modal.
 type QuickCaptureModel struct {
-	store   *sqlite.Store
-	input   textarea.Model
-	active  bool
-	width   int
-	height  int
-	helpBar components.HelpBar
+	store    *sqlite.Store
+	input    textarea.Model
+	active   bool
+	width    int
+	height   int
+	helpBar  components.HelpBar
+	showHelp bool // Help modal state
 }
 
 // NewQuickCaptureModel creates a new quick capture modal.
@@ -84,7 +85,16 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (QuickCaptureModel, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Handle help modal - any key closes it
+		if m.showHelp {
+			m.showHelp = false
+			return *m, nil
+		}
+
 		switch msg.String() {
+		case "?":
+			m.showHelp = true
+			return *m, nil
 		case "esc":
 			m.Close()
 			return *m, nil
@@ -176,6 +186,11 @@ func (m *QuickCaptureModel) View() string {
 		return ""
 	}
 
+	// Show help modal if active
+	if m.showHelp {
+		return m.helpView()
+	}
+
 	// Styles using ARCHWAVE theme
 	modalStyle := lipgloss.NewStyle().
 		Border(lipgloss.DoubleBorder()).
@@ -205,6 +220,49 @@ func (m *QuickCaptureModel) View() string {
 		tips,
 		"",
 		m.helpBar.View(),
+	)
+
+	return modalStyle.Render(content)
+}
+
+// helpView renders the help modal for quick capture.
+func (m *QuickCaptureModel) helpView() string {
+	// Styles using ARCHWAVE theme
+	modalStyle := lipgloss.NewStyle().
+		Border(lipgloss.DoubleBorder()).
+		BorderForeground(styles.AccentColor).
+		Padding(1, 2).
+		Width(m.width - 4)
+
+	title := styles.TitleStyle.Render("⚡ QUICK CAPTURE - Help")
+
+	helpText := `Quickly capture thoughts without leaving your current context.
+
+` + styles.SelectedItemStyle.Render("How it Works:") + `
+• The first line becomes the note title
+• Everything after becomes the note body
+• Use #hashtags anywhere to add tags
+• Notes are automatically tagged with #quick
+
+` + styles.SelectedItemStyle.Render("Keyboard Shortcuts:") + `
+• ` + styles.NeonStyle.Render("Ctrl+S") + ` or ` + styles.NeonStyle.Render("Ctrl+Enter") + `: Save note
+• ` + styles.NeonStyle.Render("Esc") + `: Cancel and close
+• ` + styles.NeonStyle.Render("?") + `: Show this help
+
+` + styles.SelectedItemStyle.Render("Tips:") + `
+• Access from anywhere with Ctrl+X
+• Perfect for fleeting thoughts
+• Filter notes by #quick to find captures later`
+
+	help := styles.HelpStyle.Render("Press any key to close")
+
+	content := lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		"",
+		helpText,
+		"",
+		help,
 	)
 
 	return modalStyle.Render(content)

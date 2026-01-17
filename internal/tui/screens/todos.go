@@ -146,6 +146,9 @@ type TodosListModel struct {
 	priorityFilter models.TodoPriority    // Filter by priority: -1 = all, 0-2 = specific
 	showPreview    bool                   // Whether preview mode is active
 	previewTodo    *models.Todo           // Todo being previewed
+
+	// Phase 10: Help modal
+	showHelp bool // Help modal state
 }
 
 // NewTodosListModel creates a new todos list screen.
@@ -189,7 +192,7 @@ func NewTodosListModel(store *sqlite.Store) TodosListModel {
 
 // Init implements tea.Model.
 func (m *TodosListModel) Init() tea.Cmd {
-	return func() tea.Msg { return nil }
+	return nil
 }
 
 // SetSize updates the list dimensions.
@@ -334,6 +337,18 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Handle help modal - any key closes it
+		if m.showHelp {
+			m.showHelp = false
+			return m, nil
+		}
+
+		// '?' opens help from any mode (except when in input fields)
+		if msg.String() == "?" && !m.showCreate && !m.showFilter {
+			m.showHelp = true
+			return m, nil
+		}
+
 		// Handle filter input with search-as-you-type
 		if m.showFilter {
 			switch msg.String() {
@@ -676,6 +691,11 @@ func (m *TodosListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 //   - Preview mode for viewing full todo details
 //   - Sort and filter indicators in help bar
 func (m *TodosListModel) View() string {
+	// Phase 10: Help modal
+	if m.showHelp {
+		return styles.PanelStyle.Render(m.helpView())
+	}
+
 	// Phase 3: Preview mode
 	if m.showPreview && m.previewTodo != nil {
 		return m.renderPreview()
@@ -1116,4 +1136,48 @@ func (t TodoItem) Description() string {
 
 func (t TodoItem) FilterValue() string {
 	return t.todo.Title + " " + t.todo.Description
+}
+
+// helpView renders the help modal for the todos screen.
+func (m *TodosListModel) helpView() string {
+	title := styles.TitleStyle.Render("✅ TODOS - Help")
+
+	helpText := `Manage your tasks with flexible sorting, filtering, and tagging.
+
+` + styles.SelectedItemStyle.Render("List Navigation:") + `
+• ` + styles.NeonStyle.Render("j/k") + ` or Arrow Keys: Move selection up/down
+• ` + styles.NeonStyle.Render("Space") + `: Toggle todo completion status
+• ` + styles.NeonStyle.Render("v") + `: View full todo details (preview mode)
+• ` + styles.NeonStyle.Render("c") + `: Create new todo
+• ` + styles.NeonStyle.Render("e") + `: Edit selected todo
+• ` + styles.NeonStyle.Render("d") + `: Delete selected todo
+
+` + styles.SelectedItemStyle.Render("Sorting & Filtering:") + `
+• ` + styles.NeonStyle.Render("s") + `: Cycle sort mode (Date↓ → Priority → Date↑ → A-Z → Due Date)
+• ` + styles.NeonStyle.Render("f") + `: Cycle status filter (All → Pending → In Progress → Completed)
+• ` + styles.NeonStyle.Render("p") + `: Cycle priority filter (All → High → Medium → Low)
+• ` + styles.NeonStyle.Render("t") + `: Cycle tag filter
+• ` + styles.NeonStyle.Render("/") + `: Open search filter
+• ` + styles.NeonStyle.Render("Ctrl+R") + `: Reset all filters
+
+` + styles.SelectedItemStyle.Render("In Create/Edit Mode:") + `
+• ` + styles.NeonStyle.Render("Tab") + `: Switch between title and description fields
+• ` + styles.NeonStyle.Render("Ctrl+S") + ` or Enter (in title): Save todo
+• ` + styles.NeonStyle.Render("Esc") + `: Cancel editing
+
+` + styles.SelectedItemStyle.Render("Tips:") + `
+• Use #hashtags in title or description to add tags
+• Priority indicators: 🔴 high, 🟢 low
+• Due date indicators: ⚠️ overdue, 📅 today, ⏰ soon`
+
+	help := styles.HelpStyle.Render("Press any key to close")
+
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		"",
+		helpText,
+		"",
+		help,
+	)
 }

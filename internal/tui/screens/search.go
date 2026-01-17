@@ -35,6 +35,7 @@ type SearchModel struct {
 	selected int
 	loading  bool
 	errText  string
+	showHelp bool // Help modal state
 
 	header  components.Header
 	helpBar components.HelpBar
@@ -91,6 +92,18 @@ func (m *SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 		m.helpBar.SetHints(components.SearchResultsHints)
 		return *m, nil
 	case tea.KeyMsg:
+		// Handle help modal
+		if m.showHelp {
+			m.showHelp = false
+			return *m, nil
+		}
+
+		// ? opens help from any mode
+		if msg.String() == "?" {
+			m.showHelp = true
+			return *m, nil
+		}
+
 		switch m.mode {
 		case searchModeInput:
 			switch msg.String() {
@@ -147,7 +160,19 @@ func (m *SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 func (m *SearchModel) View() string {
 	panel := lipgloss.NewStyle().Padding(1, 2).Width(m.width).Height(m.height)
 
+	// Show help modal if active
+	if m.showHelp {
+		return panel.Render(m.helpView())
+	}
+
 	bodyWidth := m.width - 4
+
+	// Update header with result count
+	if len(m.results) > 0 {
+		m.header.SetItemCount(len(m.results))
+	} else {
+		m.header.SetItemCount(-1)
+	}
 
 	title := m.header.View()
 	queryLine := styles.InputStyle.Render(m.query.View())
@@ -211,4 +236,37 @@ func firstLine(s string) string {
 		return s[:idx]
 	}
 	return s
+}
+
+// helpView renders the help modal for the search screen.
+func (m *SearchModel) helpView() string {
+	title := styles.TitleStyle.Render("🔍 SEARCH - Help")
+
+	helpText := `Semantic search finds notes based on meaning, not just keywords.
+
+` + styles.SelectedItemStyle.Render("How it Works:") + `
+• Type a natural language query (e.g., "meeting notes from last week")
+• Press Enter to search
+• Results are ranked by semantic similarity
+
+` + styles.SelectedItemStyle.Render("Navigation:") + `
+• ` + styles.NeonStyle.Render("Enter") + `: Execute search / Open selected note
+• ` + styles.NeonStyle.Render("j/k") + ` or Arrow Keys: Navigate results
+• ` + styles.NeonStyle.Render("Esc") + `: Edit query / Go back
+
+` + styles.SelectedItemStyle.Render("Tips:") + `
+• Use descriptive queries for better results
+• Search works across note titles and bodies
+• Score indicates match quality (higher = better match)`
+
+	help := styles.HelpStyle.Render("Press any key to close")
+
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		"",
+		helpText,
+		"",
+		help,
+	)
 }

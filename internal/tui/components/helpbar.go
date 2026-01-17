@@ -127,7 +127,7 @@ var (
 		{Key: "e", Description: "Edit"},
 		{Key: "d", Description: "Delete"},
 		{Key: "Space", Description: "Toggle"},
-		{Key: "Ctrl+L", Description: "Link"},
+		{Key: "?", Description: "Help"},
 		{Key: "Ctrl+H", Description: "Home"},
 	}
 
@@ -141,6 +141,7 @@ var (
 	// QuickCaptureHints are the hints for quick capture modal
 	QuickCaptureHints = []HelpHint{
 		{Key: "Ctrl+S", Description: "Save", Primary: true},
+		{Key: "?", Description: "Help"},
 		{Key: "Esc", Description: "Cancel"},
 	}
 
@@ -205,6 +206,7 @@ var (
 	// SearchInputHints are the hints for the semantic search screen (query entry).
 	SearchInputHints = []HelpHint{
 		{Key: "Enter", Description: "Search", Primary: true},
+		{Key: "?", Description: "Help"},
 		{Key: "Ctrl+H", Description: "Home"},
 		{Key: "Esc", Description: "Back"},
 	}
@@ -213,6 +215,7 @@ var (
 	SearchResultsHints = []HelpHint{
 		{Key: "j/k", Description: "Navigate"},
 		{Key: "Enter", Description: "Open Note", Primary: true},
+		{Key: "?", Description: "Help"},
 		{Key: "Esc", Description: "Edit Query"},
 		{Key: "Ctrl+H", Description: "Home"},
 	}

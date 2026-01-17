@@ -120,7 +120,7 @@ func NewNotesListModel(store *sqlite.Store) NotesListModel {
 
 // Init implements tea.Model.
 func (m *NotesListModel) Init() tea.Cmd {
-	return func() tea.Msg { return nil }
+	return nil
 }
 
 // SetSize updates the list dimensions.

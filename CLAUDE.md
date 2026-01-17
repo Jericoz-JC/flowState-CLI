@@ -2,10 +2,10 @@
 
 > This file tracks the current development plan and progress. Updated after each phase completion.
 
-## Current Status: Phase 9 Complete, v0.1.12 Released
+## Current Status: Phase 10 Complete, v0.1.13 Released
 **Last Updated:** January 16, 2026
-**Current Version:** v0.1.12
-**Next Target:** v0.1.13 (Screen Consistency)
+**Current Version:** v0.1.13
+**Next Target:** v0.1.14 (Markdown & Animation)
 
 ---
 
@@ -22,7 +22,7 @@
 | v0.1.10 | 7 | ✅ Complete | NPM Install Fixes (ia32, Linux PATH) |
 | v0.1.11 | 8 | ✅ Complete | Focus Screen Visual Overhaul |
 | v0.1.12 | 9 | ✅ Complete | Component Library |
-| v0.1.13 | 10 | ⏳ Pending | Screen Consistency |
+| v0.1.13 | 10 | ✅ Complete | Screen Consistency |
 | v0.1.14 | 11 | ⏳ Pending | Markdown & Animation |
 | v0.1.15 | 12 | ⏳ Pending | Technical Debt Cleanup |
 | v0.2.0 | 13 | ⏳ Pending | Final Polish & Documentation |
@@ -563,22 +563,45 @@ Screen titles, help text, and UI labels scattered rather than centralized.
 
 ---
 
-## Phase 10: Screen Consistency
-**Version:** v0.1.13 | **Status:** Pending
+## Phase 10: Screen Consistency ✅
+**Version:** v0.1.13 | **Status:** Complete
 
-### Changes
-| Screen | Updates |
-|--------|---------|
-| `search.go` | Add help modal (`?`), use SetItemCount |
-| `todos.go` | Add help modal (`?`) |
-| `quickcapture.go` | Add help modal (`?`) |
-| All screens | Standardize Init() to return `nil` |
+### Help Modal Implementation
+All screens now respond to `?` key with contextual help:
+- **Search Screen**: Semantic search usage, navigation, tips
+- **Todos Screen**: Full keyboard reference, sorting, filtering, tagging
+- **Quick Capture**: Usage guide, shortcuts, tips
 
-### Files to Modify
-- `internal/tui/screens/search.go`
-- `internal/tui/screens/todos.go`
-- `internal/tui/screens/quickcapture.go`
-- `internal/tui/components/helpbar.go`
+### Pattern Used
+Each screen follows the same help modal pattern:
+1. `showHelp bool` field in model struct
+2. `?` key handler in Update() (when not in input mode)
+3. `helpView()` function with screen-specific content
+4. Check `showHelp` at start of View() to render modal
+5. Any key closes the help modal
+
+### Init() Standardization
+Standardized all screens to use `return nil` in Init():
+- `notes.go`: Changed from `return func() tea.Msg { return nil }`
+- `todos.go`: Changed from `return func() tea.Msg { return nil }`
+
+### HelpBar Updates
+Added `?` hints to:
+- `SearchInputHints`
+- `SearchResultsHints`
+- `TodosListHints`
+- `QuickCaptureHints`
+
+### Files Modified
+- `internal/tui/screens/search.go` - Help modal, SetItemCount
+- `internal/tui/screens/todos.go` - Help modal, Init() fix
+- `internal/tui/screens/notes.go` - Init() fix
+- `internal/tui/screens/quickcapture.go` - Help modal
+- `internal/tui/components/helpbar.go` - Added ? hints
+
+### Release
+- Tag: v0.1.13
+- Release: https://github.com/Jericoz-JC/flowState-CLI/releases/tag/v0.1.13
 
 ---
 
