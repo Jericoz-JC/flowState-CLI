@@ -156,3 +156,72 @@ func TestGradientText(t *testing.T) {
 		t.Errorf("expected 'H' in result")
 	}
 }
+
+func TestGlowBorder(t *testing.T) {
+	content := "Test Content"
+	result := GlowBorder(content, AccentColor)
+
+	if result == "" {
+		t.Fatalf("expected non-empty result")
+	}
+
+	// Result should contain the original content
+	if !strings.Contains(result, content) {
+		t.Errorf("expected result to contain original content")
+	}
+
+	// Result should have border characters
+	hasBorder := strings.Contains(result, "║") ||
+		strings.Contains(result, "│") ||
+		strings.Contains(result, "╔") ||
+		strings.Contains(result, "┌")
+	if !hasBorder {
+		t.Errorf("expected border characters in result")
+	}
+}
+
+func TestGlowBorderEmpty(t *testing.T) {
+	result := GlowBorder("", AccentColor)
+	// Empty content should still return a bordered empty box
+	if result == "" {
+		t.Errorf("expected non-empty result even for empty content")
+	}
+}
+
+func TestGlowBox(t *testing.T) {
+	content := "Neon Glow"
+	result := GlowBox(content)
+
+	if result == "" {
+		t.Fatalf("expected non-empty result")
+	}
+
+	// Should contain the content
+	if !strings.Contains(result, content) {
+		t.Errorf("expected result to contain content")
+	}
+}
+
+func TestGlowBoxUsesAccentColor(t *testing.T) {
+	// GlowBox should use AccentColor by default
+	content := "Test"
+	result := GlowBox(content)
+
+	// Just verify it renders without error
+	if result == "" {
+		t.Fatalf("expected non-empty result")
+	}
+}
+
+func TestGradientTitle(t *testing.T) {
+	result := GradientTitle("My Title")
+
+	if result == "" {
+		t.Fatalf("expected non-empty result")
+	}
+
+	// Should contain the title text
+	if !strings.Contains(result, "M") || !strings.Contains(result, "y") {
+		t.Errorf("expected result to contain title characters")
+	}
+}

@@ -2,10 +2,10 @@
 
 > This file tracks the current development plan and progress. Updated after each phase completion.
 
-## Current Status: Phase 8 Complete, v0.1.11 Released
+## Current Status: Phase 9 Complete, v0.1.12 Released
 **Last Updated:** January 16, 2026
-**Current Version:** v0.1.11
-**Next Target:** v0.1.12 (Unified Theme & Design System)
+**Current Version:** v0.1.12
+**Next Target:** v0.1.13 (Screen Consistency)
 
 ---
 
@@ -21,9 +21,11 @@
 | v0.1.9 | 6 | ✅ Complete | Notes System Overhaul |
 | v0.1.10 | 7 | ✅ Complete | NPM Install Fixes (ia32, Linux PATH) |
 | v0.1.11 | 8 | ✅ Complete | Focus Screen Visual Overhaul |
-| v0.1.12 | 9 | ⏳ Pending | Unified Theme & Design System |
-| v0.1.13 | 10 | ⏳ Pending | Technical Debt Cleanup |
-| v0.2.0 | 11 | ⏳ Pending | Final Polish & Documentation |
+| v0.1.12 | 9 | ✅ Complete | Component Library |
+| v0.1.13 | 10 | ⏳ Pending | Screen Consistency |
+| v0.1.14 | 11 | ⏳ Pending | Markdown & Animation |
+| v0.1.15 | 12 | ⏳ Pending | Technical Debt Cleanup |
+| v0.2.0 | 13 | ⏳ Pending | Final Polish & Documentation |
 
 ---
 
@@ -428,6 +430,69 @@ Unsupported platform: win32-ia32
 
 ---
 
+## Phase 9: Component Library ✅
+**Version:** v0.1.12 | **Status:** Complete
+
+### New Components (TDD)
+
+#### AnimatedSpinner
+- Loading indicator with ARCHWAVE vaporwave styling
+- Multiple frame sets: VaporwaveSpinnerFrames, NeonSpinnerFrames, DotsSpinnerFrames
+- Start/Stop methods with tick commands
+- Customizable interval and label
+
+#### GlowBorder
+- Neon glow effect wrapper for content
+- Uses double border with accent color
+- `GlowBox()` shorthand using AccentColor
+
+#### ASCIIHeader
+- Screen headers with ASCII art decoration
+- Three styles: Minimal, Boxed, Banner
+- Spaced text for vaporwave aesthetic ("N O T E S")
+- Item count and subtitle support
+- Pre-defined headers for all screens
+
+### Theme Enhancements
+- `GlowBorder()` - Neon glow around content
+- `GlowBox()` - Shorthand using AccentColor
+- `GradientTitle()` - Title with gradient effect
+- `NeonText()` - Cyan bold text
+- Unified border style constants
+
+### Files Created
+- `internal/tui/components/spinner.go`
+- `internal/tui/components/spinner_test.go`
+- `internal/tui/components/ascii_header.go`
+- `internal/tui/components/ascii_header_test.go`
+
+### Files Modified
+- `internal/tui/styles/theme.go` - Added GlowBorder, GradientTitle, NeonText
+- `internal/tui/styles/theme_test.go` - Added tests for new functions
+
+### Tests Added
+- `TestNewAnimatedSpinner` - Spinner initialization
+- `TestSpinnerFrameCycle` - Frame advancement
+- `TestSpinnerView` - View rendering
+- `TestSpinnerViewWithLabel` - Label display
+- `TestSpinnerStartStop` - Start/stop behavior
+- `TestSpinnerTickCommand` - Tick command handling
+- `TestVaporwaveFrames` - Frame definitions
+- `TestGlowBorder` - Glow border rendering
+- `TestGlowBox` - GlowBox shorthand
+- `TestGradientTitle` - Gradient title rendering
+- `TestNewASCIIHeader` - Header initialization
+- `TestASCIIHeaderView` - View rendering
+- `TestASCIIHeaderStyles` - All style variants
+- `TestASCIIHeaderBoxedHasBorders` - Border verification
+- `TestScreenASCIIHeaders` - Screen header definitions
+
+### Release
+- Tag: v0.1.12
+- Release: https://github.com/Jericoz-JC/flowState-CLI/releases/tag/v0.1.12
+
+---
+
 ## Technical Debt Analysis
 
 ### Priority: High (Address before v0.2.0)
@@ -498,52 +563,52 @@ Screen titles, help text, and UI labels scattered rather than centralized.
 
 ---
 
-## Phase 9: Unified Theme & Design System
-**Version:** v0.1.12 | **Status:** Pending
+## Phase 10: Screen Consistency
+**Version:** v0.1.13 | **Status:** Pending
 
-### Charmbracelet Library Integration
-```go
-// Add to go.mod
-github.com/charmbracelet/glamour   // Markdown rendering
-github.com/charmbracelet/harmonica // Animations
-```
+### Changes
+| Screen | Updates |
+|--------|---------|
+| `search.go` | Add help modal (`?`), use SetItemCount |
+| `todos.go` | Add help modal (`?`) |
+| `quickcapture.go` | Add help modal (`?`) |
+| All screens | Standardize Init() to return `nil` |
 
-### Design System Enhancements
-
-#### ASCII Art Headers
-- Consistent ASCII art headers for each screen
-- flowState logo variations for different contexts
-
-#### Animation System
-- Page transition animations
-- Loading spinners for async operations
-- Smooth scroll animations
-- Fade effects for modals
-
-#### ARCHWAVE Theme Polish
-- Consistent color usage across all screens
-- Unified border styles (double borders for primary, rounded for secondary)
-- Gradient text for titles
-- Neon glow effects for focused elements
-
-### Component Library
-- [ ] `AnimatedSpinner` - for loading states
-- [ ] `GradientProgress` - animated progress bars
-- [ ] `GlowBorder` - neon border effect
-- [ ] `FadeModal` - animated modal component
-- [ ] `ASCIIHeader` - screen headers with art
+### Files to Modify
+- `internal/tui/screens/search.go`
+- `internal/tui/screens/todos.go`
+- `internal/tui/screens/quickcapture.go`
+- `internal/tui/components/helpbar.go`
 
 ---
 
-## Phase 10: Technical Debt Cleanup
-**Version:** v0.1.13 | **Status:** Pending
+## Phase 11: Markdown & Animation
+**Version:** v0.1.14 | **Status:** Pending
+
+### New Dependencies
+```go
+github.com/charmbracelet/glamour   // Markdown rendering
+github.com/charmbracelet/harmonica // Animations (optional)
+```
+
+### Features
+- Markdown preview in notes using glamour
+- Code blocks, headers, lists display correctly
+- ARCHWAVE theme for markdown rendering
+
+### Files to Create
+- `internal/tui/render/markdown.go`
+- `internal/tui/render/markdown_test.go`
+
+---
+
+## Phase 12: Technical Debt Cleanup
+**Version:** v0.1.15 | **Status:** Pending
 
 ### High Priority Items
 - [ ] Add test coverage for `internal/commands`
 - [ ] Add test coverage for `internal/config`
 - [ ] Add test coverage for `internal/models`
-- [ ] Add test coverage for `internal/tui/keymap`
-- [ ] Add test coverage for `internal/tui/styles`
 - [ ] Remove or document `internal/storage/qdrant` package
 
 ### Medium Priority Items
@@ -551,13 +616,9 @@ github.com/charmbracelet/harmonica // Animations
 - [ ] Create shared `internal/tui/filters/` package
 - [ ] Fix TODO comments in `notes.go`
 
-### Optional
-- [ ] Centralize hardcoded strings
-- [ ] Improve error handling in `main.go`
-
 ---
 
-## Phase 11: Final Polish & Documentation
+## Phase 13: Final Polish & Documentation
 **Version:** v0.2.0 | **Status:** Pending
 
 ### Cross-Screen Consistency Audit

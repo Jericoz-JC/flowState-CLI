@@ -732,3 +732,51 @@ func SessionCountIndicator(count, max int) string {
 
 	return result.String()
 }
+
+// GlowBorder wraps content in a neon-glow styled border
+// Creates a vaporwave aesthetic with the specified glow color
+func GlowBorder(content string, glowColor lipgloss.Color) string {
+	// Create the glow effect using a colored double border
+	glowStyle := lipgloss.NewStyle().
+		Border(lipgloss.DoubleBorder()).
+		BorderForeground(glowColor).
+		Padding(0, 1)
+
+	return glowStyle.Render(content)
+}
+
+// GlowBox wraps content in a glow border using the accent color
+// Shorthand for GlowBorder(content, AccentColor)
+func GlowBox(content string) string {
+	return GlowBorder(content, AccentColor)
+}
+
+// GradientTitle renders a title with gradient effect using theme colors
+// Uses PrimaryColor, SecondaryColor, and AccentColor for the gradient
+func GradientTitle(text string) string {
+	return GradientText(text, PrimaryColor, SecondaryColor, AccentColor)
+}
+
+// NeonText renders text with a neon glow appearance
+// Uses SecondaryColor (cyan) for the neon effect
+func NeonText(text string) string {
+	return lipgloss.NewStyle().
+		Foreground(SecondaryColor).
+		Bold(true).
+		Render(text)
+}
+
+// Unified border style constants for consistent UI
+var (
+	// PrimaryBorderStyle for main containers
+	PrimaryBorderStyle = lipgloss.DoubleBorder()
+
+	// SecondaryBorderStyle for secondary containers
+	SecondaryBorderStyle = lipgloss.RoundedBorder()
+
+	// InputBorderStyle for input fields
+	InputBorderStyle = lipgloss.NormalBorder()
+
+	// ModalBorderStyle for modal overlays
+	ModalBorderStyle = lipgloss.ThickBorder()
+)
