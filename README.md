@@ -34,7 +34,7 @@ flowState-cli keeps you in the flow by making knowledge capture, task management
 - **Focus Sessions**: Pomodoro-style timer with configurable durations, session history, and streak tracking
 - **Linking System**: Connect notes and todos through bidirectional relationships
 - **Mind Map**: Visual graph of your notes and their connections
-- **Semantic Search**: Local ONNX-powered semantic search with embeddings
+- **Search**: Fast local keyword/fuzzy search across notes and todos (ONNX-powered semantic embeddings are planned — see [Search](#search) below)
 
 ### UX Enhancements
 - **Quick Capture**: `Ctrl+X` to instantly capture a thought from anywhere
@@ -121,9 +121,9 @@ Download from [GitHub Releases](https://github.com/Jericoz-JC/flowState-CLI/rele
 | Linux | x64 | `flowstate-linux-amd64.tar.gz` |
 | Linux | ARM64 | `flowstate-linux-arm64.tar.gz` |
 
-Extract and run:
-- macOS/Linux: `./flowstate`
-- Windows: `.\flowstate.exe`
+Extract, then run the binary **from the folder you extracted it into**:
+- macOS/Linux: `chmod +x ./flowstate && ./flowstate`
+- Windows (PowerShell): `.\flowstate.exe`
 
 > **Note**: 32-bit systems are not supported. If you get an "ia32" error during npm install, you have 32-bit Node.js installed. Please install [64-bit Node.js](https://nodejs.org/).
 
@@ -138,16 +138,34 @@ go install github.com/Jericoz-JC/flowState-CLI/cmd/flowState@latest
 ```bash
 git clone https://github.com/Jericoz-JC/flowState-CLI
 cd flowState-CLI
-go build -o flowstate ./cmd/flowState
-./flowstate
+make build        # builds into ./dist/flowstate (gitignored)
+./dist/flowstate
 ```
+
+> **Do not** run `go build -o flowstate ./cmd/flowState` in the repo root.
+> A binary left at the repo root can shadow your npm-installed `flowstate`
+> on PATH, causing an old build to launch. `make build` outputs to `./dist`
+> (gitignored) to avoid this. Use `flowstate --version` to confirm which
+> binary actually runs.
 
 ### First Run
 
 On first run, the application will:
-1. Initialize SQLite database
-2. Download the embedding model (~90MB)
-3. Start the TUI interface
+1. Initialize the SQLite database under the platform config directory
+2. Start the TUI interface
+
+Search currently uses a local keyword/fuzzy index — no model download is
+required. (ONNX semantic embeddings are planned; see [Search](#search).)
+
+### Verifying Your Install
+
+```bash
+flowstate --version   # version, commit, and the exact binary path that runs
+flowstate --paths     # config/data/database/model/log locations
+```
+
+These two flags are the fastest way to debug "wrong version launches" or
+"where is my data/log" questions across platforms.
 
 ### Keyboard Shortcuts
 
@@ -305,9 +323,14 @@ npm publish
   ```
 
 **Old version runs instead of new version:**
-- You have an old global installation conflicting
-- Fix: `npm uninstall -g flowstate-cli && npm install -g flowstate-cli`
-- Or check PATH order: `which flowstate` (Linux/macOS) or `where flowstate` (Windows)
+- First, confirm what's actually running: `flowstate --version` prints the
+  version **and the exact executable path** that launched.
+- Find every `flowstate` on your PATH: `which -a flowstate` (Linux/macOS) or
+  `where flowstate` (Windows). The first one wins.
+- Common cause on a dev machine: a stale binary built into the repo root (or
+  another folder early in your PATH) shadows the npm install. Delete it and
+  build into `./dist` with `make build` instead.
+- Reinstall the npm copy: `npm uninstall -g flowstate-cli && npm install -g flowstate-cli`
 
 ## Project Structure
 
@@ -422,11 +445,17 @@ CREATE INDEX idx_links_source ON links(source_type, source_id);
 CREATE INDEX idx_links_target ON links(target_type, target_id);
 ```
 
-## Semantic Search
+## Search
 
-The application uses `all-MiniLM-L6-v2` embedding model for semantic search:
+> **Current status:** Search runs entirely locally with **no model download
+> required**. Embeddings are produced by a deterministic placeholder embedder
+> (384-dim, pure Go) — great for exact/fuzzy matching, but it does not yet
+> deliver true semantic relevance. Real ONNX `all-MiniLM-L6-v2` inference is
+> planned (see [Notes on ONNX](#notes-on-onnx-local-embeddings)).
 
-- **Model size**: ~90MB (downloaded on first run)
+Planned semantic search design (target model `all-MiniLM-L6-v2`):
+
+- **Model size**: ~90MB (downloaded on first use, once ONNX inference lands)
 - **Dimensions**: 384
 - **Storage**: SQLite-backed vectors (`note_vectors` table)
 - **Features**: Natural language queries, tag filtering, incremental indexing
@@ -446,10 +475,13 @@ The application uses `all-MiniLM-L6-v2` embedding model for semantic search:
 go mod download
 
 # Run tests
-go test ./...
+make test          # or: go test ./...
 
-# Build
-go build -o flowState ./cmd/flowState/
+# Build (outputs to ./dist, never the repo root)
+make build
+
+# Run the dev build
+make run
 
 # Run with hot reload (requires air)
 air

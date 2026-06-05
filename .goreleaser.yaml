@@ -19,6 +19,8 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .ShortCommit }}
 
 archives:
   - name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}"

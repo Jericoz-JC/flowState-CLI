@@ -2,10 +2,20 @@
 
 > This file tracks the current development plan and progress. Updated after each phase completion.
 
-## Current Status: Phase 10 Complete, v0.1.13 Released
-**Last Updated:** January 16, 2026
-**Current Version:** v0.1.13
-**Next Target:** v0.1.14 (Markdown & Animation)
+## Current Status: Phase 11 In Progress — v0.1.14 Release Stabilization
+**Last Updated:** June 5, 2026
+**Current Version:** v0.1.13 (released)
+**Next Target:** v0.1.14 — Release Stabilization (install/run/paths/logging)
+
+> **Why the roadmap was re-sequenced (June 2026):** Real install/run reports
+> came in — an `ia32` rejection on a 64-bit Windows machine, a Linux SSH user
+> who installed but couldn't launch the app, and a dev machine where an old
+> binary kept shadowing fresh builds. These are correctness bugs, so the next
+> patch is **Release Stabilization**, not the previously-planned Markdown work.
+> The remaining pre-0.2.0 phases (draft persistence, home dashboard + docs,
+> markdown, tech-debt cleanup) are sequenced below. The earlier
+> "Markdown & Animation" and standalone "Technical Debt Cleanup" phases are
+> folded into Phases 13–15.
 
 ---
 
@@ -23,9 +33,11 @@
 | v0.1.11 | 8 | ✅ Complete | Focus Screen Visual Overhaul |
 | v0.1.12 | 9 | ✅ Complete | Component Library |
 | v0.1.13 | 10 | ✅ Complete | Screen Consistency |
-| v0.1.14 | 11 | ⏳ Pending | Markdown & Animation |
-| v0.1.15 | 12 | ⏳ Pending | Technical Debt Cleanup |
-| v0.2.0 | 13 | ⏳ Pending | Final Polish & Documentation |
+| v0.1.14 | 11 | 🚧 In Progress | Release Stabilization (install/run/paths/logging) |
+| v0.1.15 | 12 | ⏳ Pending | Draft Persistence & Editor Reliability |
+| v0.1.16 | 13 | ⏳ Pending | Home Dashboard & In-App Docs |
+| v0.1.17 | 14 | ⏳ Pending | Markdown Rendering & Technical Debt Cleanup |
+| v0.2.0 | 15 | ⏳ Pending | Final Polish & Documentation |
 
 ---
 
@@ -605,61 +617,136 @@ Added `?` hints to:
 
 ---
 
-## Phase 11: Markdown & Animation
-**Version:** v0.1.14 | **Status:** Pending
+## Phase 11: Release Stabilization 🚧
+**Version:** v0.1.14 | **Status:** In Progress
 
-### New Dependencies
-```go
-github.com/charmbracelet/glamour   // Markdown rendering
-github.com/charmbracelet/harmonica // Animations (optional)
-```
+> Treat the install/run complaints as real, patch-worthy bugs. Every item
+> below follows the TDD mandate (test first where there is testable logic).
 
-### Features
-- Markdown preview in notes using glamour
-- Code blocks, headers, lists display correctly
-- ARCHWAVE theme for markdown rendering
+### Root Causes Diagnosed
+| Report | Root Cause |
+|--------|------------|
+| Friend got `ia32`/`x86` error on a 64-bit Windows AMD CPU | `npm/package.json` declared `cpu: ["x64","arm64"]`. npm validates `cpu` **before** `postinstall`, so ia32 users got a generic `EBADPLATFORM` and never saw `install.js`'s actionable 64-bit guidance. Friend had 32-bit Node installed. |
+| Linux SSH user installed but couldn't launch (`flowstate`/`./flowstate` failed) | npm global bin not on PATH; direct-download binary not made executable / run from wrong dir. Messaging was not explicit per-platform. |
+| Dev machine: clicking `flowstate` opens an OLD app; `go build` gives latest | A stale 12MB `flowstate` binary was **committed at the repo root** (`.gitignore` ignored `*.exe` but NOT the extensionless `flowstate`). It shadowed the npm install / fresh builds on PATH. |
+| macOS "error log" confusion | Logs were written to `debug.log` in the CWD, and config was hardcoded to `~/.config/flowState` on every OS instead of platform-native paths. |
 
-### Files to Create
-- `internal/tui/render/markdown.go`
-- `internal/tui/render/markdown_test.go`
+### Checklist
+- [x] **TDD** `internal/config`: platform-native paths via `os.UserConfigDir()`
+      (Windows `%AppData%`, macOS `~/Library/Application Support`, Linux
+      `~/.config`). Added `LogPath`, pure `Resolve(base)` helper, best-effort
+      legacy-data migration. Tests: `config_test.go`.
+- [x] **TDD** `internal/cli`: `--version` (prints version, commit, **and the
+      running executable path**) and `--paths` (config/data/db/model/log).
+      Pure string builders + `ParseFlag`. Tests: `cli_test.go`.
+- [x] `cmd/flowState/main.go`: resolve config/paths **before** log init; log to
+      `cfg.LogPath`; print absolute log path on panic/startup failure; wire flags.
+- [x] `.goreleaser.yaml`: inject `-X main.version` / `-X main.commit` at release.
+- [x] Remove committed root `flowstate` binary; `.gitignore` `/flowstate`,
+      `/flowstate-*`; add `Makefile` that builds into `./dist` (never repo root).
+- [x] `npm/package.json`: remove `cpu` gate (let `install.js` own the ia32
+      message), add `files` whitelist so tarballs can't bundle stale binaries,
+      bump to `0.1.14`. Verified via `npm pack --dry-run` (4 files, no binaries).
+- [x] `npm/install.js`: explicit per-platform run commands + `--version`/`--paths`
+      debug hint; comment documenting why `cpu` must stay out of package.json.
+- [x] README + npm README: per-platform run/open commands, PATH-conflict
+      troubleshooting (`which -a flowstate` / `where flowstate`), stop claiming
+      ONNX semantic search is active or that a model downloads on first run.
+
+### Remaining Before Tag
+- [ ] Final `go test ./...` green + `make build` smoke test of `--version`/`--paths`.
+- [ ] Manual smoke checks on Windows / macOS / Linux install + run paths.
+- [ ] Tag `v0.1.14` and verify CI release publishes all 6 binaries + npm.
+
+### Public Interface Changes
+- New CLI flags: `flowstate --version`, `flowstate --paths`.
+- Data/log relocate to platform-native dirs (legacy `~/.config/flowState`
+  auto-migrated best-effort, mainly for macOS).
 
 ---
 
-## Phase 12: Technical Debt Cleanup
+## Phase 12: Draft Persistence & Editor Reliability
 **Version:** v0.1.15 | **Status:** Pending
 
-### High Priority Items
-- [ ] Add test coverage for `internal/commands`
-- [ ] Add test coverage for `internal/config`
-- [ ] Add test coverage for `internal/models`
-- [ ] Remove or document `internal/storage/qdrant` package
+> Fixes the "persistent state when writing in descriptions" report: unsaved
+> note/todo/quick-capture text is currently lost on close/navigation/restart.
 
-### Medium Priority Items
-- [ ] Extract common filter logic from `notes.go` and `todos.go`
-- [ ] Create shared `internal/tui/filters/` package
-- [ ] Fix TODO comments in `notes.go`
+### Scope (TDD)
+- [ ] SQLite-backed `drafts` table: `draft_key`, `title`, `body`, `focused_field`,
+      `updated_at` (no ad-hoc files).
+- [ ] Draft keys: `note:new`, `note:<id>`, `todo:new`, `todo:<id>`, `quickcapture`.
+- [ ] Autosave on input change (short debounce) and on editor close / screen switch.
+- [ ] Restore matching draft automatically when reopening an editor.
+- [ ] Clear draft on successful save.
+- [ ] Explicit "discard draft" action in edit mode, surfaced in the help bar.
+- [ ] Extract shared save/draft plumbing so the logic stops being duplicated
+      across the two giant screen files (`notes.go`, `todos.go`).
+
+### Tests
+- create/edit note draft restore; create/edit todo draft restore; quick-capture
+  draft restore; successful save clears draft; discard removes draft.
 
 ---
 
-## Phase 13: Final Polish & Documentation
+## Phase 13: Home Dashboard & In-App Docs
+**Version:** v0.1.16 | **Status:** Pending
+
+> Covers "add Windows into main page with todos" (read as a multi-pane home
+> dashboard) and "Documentation Page" (README + richer in-app home/help).
+
+### Scope (TDD)
+- [ ] Extract the home screen out of `internal/tui/app.go` into its own
+      screen/model.
+- [ ] Read-only multi-pane dashboard:
+  - **Today** — top pending/overdue todos
+  - **Recent Notes** — last few updated notes
+  - **Focus** — today's completed sessions + current streak
+  - **Quick Help** — platform-aware shortcuts + how to open/run the app
+- [ ] Keep v1 dashboard informative, not a second editing surface.
+- [ ] Expand in-app help so Home doubles as the "documentation page".
+
+### Tests
+- dashboard renders with empty data; renders summaries with notes/todos/session
+  data present; help copy reflects platform-specific launch instructions.
+
+---
+
+## Phase 14: Markdown Rendering & Technical Debt Cleanup
+**Version:** v0.1.17 | **Status:** Pending
+
+### Markdown (was the old Phase 11)
+- [ ] Markdown preview in notes using `github.com/charmbracelet/glamour`
+      (code blocks, headers, lists; ARCHWAVE theme).
+- [ ] Files: `internal/tui/render/markdown.go` (+ `_test.go`).
+
+### Technical Debt (see analysis above)
+- [ ] Remove `internal/storage/qdrant` (dead code) and the unused `QdrantUrl`
+      config field — or document as a development stub if revival is planned.
+- [ ] Add tests for `internal/commands`, `internal/models`, `internal/tui/keymap`.
+- [ ] Extract only the common filter/editor helpers justified by Phases 12–13;
+      defer any further screen-file breakup.
+- [ ] Resolve the 2 `TODO` comments in `notes.go`.
+
+---
+
+## Phase 15: Final Polish & Documentation
 **Version:** v0.2.0 | **Status:** Pending
 
+> Ship only after install/run support, logging, draft persistence,
+> dashboard/help, markdown, and dead-code cleanup are stable. **Real ONNX
+> inference stays out of scope** unless explicitly promoted into its own
+> release phase first — until then, docs/help must not overstate semantic search.
+
 ### Cross-Screen Consistency Audit
-- Verify all screens use same patterns
-- Consistent keybindings
-- Unified help bar format
-- Matching visual hierarchy
+- Verify all screens use same patterns; consistent keybindings; unified help
+  bar format; matching visual hierarchy.
 
 ### Performance Optimization
-- Benchmark all screens
-- Optimize render loops
-- Lazy load heavy components
+- Benchmark all screens; optimize render loops; lazy-load heavy components.
 
 ### Documentation
-- Update README with all new features
-- Add keyboard shortcut reference
-- Screenshot gallery
-- Demo GIF
+- Update README with all new features; keyboard shortcut reference; screenshot
+  gallery; demo GIF.
 
 ---
 

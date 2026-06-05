@@ -19,6 +19,12 @@ If `flowstate` command is not found, try:
 npx flowstate
 ```
 
+Verify your install / debug PATH issues:
+```bash
+flowstate --version   # version + the exact binary path that runs
+flowstate --paths     # config/data/database/model/log locations
+```
+
 ## Supported Platforms
 
 | Platform | Architecture | Status |
@@ -38,7 +44,7 @@ npx flowstate
 - **Todos**: Task management with priorities, due dates, status badges, and multiple sort/filter modes
 - **Focus Sessions**: Pomodoro-style timer with configurable durations and session history
 - **Mind Map**: Visual graph of note connections
-- **Semantic Search**: Local ONNX-powered semantic search
+- **Search**: Fast local keyword/fuzzy search (ONNX semantic embeddings planned)
 - **Linking System**: Connect notes and todos through bidirectional relationships
 
 ## Keyboard Shortcuts
@@ -69,7 +75,12 @@ npm global bin is not in your PATH. Options:
    ```
 
 ### Old version running
-Reinstall to fix PATH conflicts:
+First confirm what actually runs — `flowstate --version` prints the version
+and the executable path. Then check PATH order with `which -a flowstate`
+(Linux/macOS) or `where flowstate` (Windows); the first hit wins. A stale
+binary in a folder earlier on your PATH is the usual culprit.
+
+Reinstall the npm copy to fix PATH conflicts:
 ```bash
 npm uninstall -g flowstate-cli && npm install -g flowstate-cli
 ```

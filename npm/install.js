@@ -30,7 +30,10 @@ function getPlatformInfo() {
   const goPlatform = platformMap[platform];
   const goArch = archMap[arch];
 
-  // Handle 32-bit Node.js on 64-bit systems (common Windows issue)
+  // Handle 32-bit Node.js on 64-bit systems (common Windows issue).
+  // NOTE: package.json deliberately omits the "cpu" field. If it listed only
+  // x64/arm64, npm would reject ia32 installs with a generic EBADPLATFORM
+  // error BEFORE this script ever runs, hiding the actionable guidance below.
   if (!goArch && (arch === "ia32" || arch === "x86")) {
     console.error("");
     console.error("================================================================");
@@ -172,13 +175,20 @@ async function main() {
     console.log("  To run flowstate:");
     console.log("    flowstate");
     console.log("");
+    console.log("  Debug an install/PATH issue with:");
+    console.log("    flowstate --version   # shows version + the binary that runs");
+    console.log("    flowstate --paths     # shows config/data/db/log locations");
+    console.log("");
     if (isWindows) {
-      console.log("  If 'flowstate' is not recognized, try:");
+      console.log("  If 'flowstate' is not recognized in PowerShell, try:");
       console.log("    npx flowstate");
       console.log("");
-      console.log("  Or add npm global bin to your PATH:");
+      console.log("  Or add the npm global bin folder to your PATH:");
       console.log("    1. Run: npm config get prefix");
       console.log("    2. Add the returned path to your system PATH");
+      console.log("");
+      console.log("  Downloaded the .zip binary directly instead? Run it with:");
+      console.log("    .\\flowstate.exe");
       console.log("");
     } else {
       console.log("  If 'flowstate' command is not found, try:");
@@ -193,8 +203,13 @@ async function main() {
       console.log("      # Then reload your shell:");
       console.log("      source ~/.bashrc  # or source ~/.zshrc");
       console.log("");
-      console.log("    Option 3 - Run directly:");
+      console.log("    Option 3 - Run the npm-installed binary by full path:");
       console.log("      $(npm config get prefix)/bin/flowstate");
+      console.log("");
+      console.log("    Downloaded the .tar.gz binary directly instead? After");
+      console.log("    extracting, make it executable and run it from its folder:");
+      console.log("      chmod +x ./flowstate");
+      console.log("      ./flowstate");
       console.log("");
     }
   } catch (error) {

@@ -1,23 +1,14 @@
 // Package main implements the entry point for flowState-cli.
-// flowState-cli is a unified terminal productivity system for notes, todos, and focus sessions.
-//
-// Phase 1: Core Infrastructure
-// - Project initialization with Go modules
-// - Configuration management via config.Load()
-// - Bubble Tea TUI framework initialization
-// - Proper cleanup with deferred Close()
-//
-// Phase 2: Notes & Todos
-// - Full CRUD for notes (Create, Read, Update, Delete)
-// - Full CRUD for todos (Create, Read, Update, Delete)
-// - Auto-tagging from #hashtag syntax in note body
-// - Status tracking for todos (pending, in_progress, completed)
-// - Priority levels for todos (low, medium, high)
+// flowState-cli is a unified terminal productivity system for notes, todos,
+// and focus sessions.
 //
 // Usage:
 //
-//	./flowState           # Run the application
-//	./flowState.exe       # Windows executable
+//	flowstate              # Run the application (npm global install)
+//	./flowstate            # Run the downloaded binary (macOS/Linux)
+//	.\flowstate.exe        # Run the downloaded binary (Windows)
+//	flowstate --version    # Print version, commit, and the running binary path
+//	flowstate --paths      # Print config/data/db/model/log locations
 package main
 
 import (
@@ -27,46 +18,74 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/Jericoz-JC/flowState-CLI/internal/cli"
 	"github.com/Jericoz-JC/flowState-CLI/internal/config"
 	app "github.com/Jericoz-JC/flowState-CLI/internal/tui"
 )
 
+// Build metadata, injected at release time via -ldflags (see .goreleaser.yaml).
+var (
+	version = "dev"
+	commit  = "none"
+)
+
 func main() {
-	// Phase 4: Robustness - File logging
-	f, err := tea.LogToFile("debug.log", "debug")
+	// Resolve configuration/paths FIRST so support flags and the log file can
+	// point at the platform-native locations before any TUI init.
+	cfg, err := config.Load()
 	if err != nil {
-		fmt.Println("fatal:", err)
+		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
+		os.Exit(1)
+	}
+
+	execPath, _ := os.Executable()
+
+	// Handle non-TUI support flags used for install/run debugging.
+	switch cli.ParseFlag(os.Args[1:]) {
+	case cli.FlagVersion:
+		fmt.Println(cli.VersionString(version, commit, execPath))
+		return
+	case cli.FlagPaths:
+		fmt.Println(cli.PathsString(cli.Paths{
+			ExecPath:  execPath,
+			ConfigDir: cfg.DataDir,
+			DataDir:   cfg.DataDir,
+			DbPath:    cfg.DbPath,
+			ModelPath: cfg.ModelPath,
+			LogPath:   cfg.LogPath,
+		}))
+		return
+	}
+
+	// File logging to the platform-native log path (not the CWD).
+	f, err := tea.LogToFile(cfg.LogPath, "debug")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "fatal: could not open log file %s: %v\n", cfg.LogPath, err)
 		os.Exit(1)
 	}
 	defer f.Close()
 
-	// Phase 4: Robustness - Global Panic Recovery
+	// Global panic recovery: surface the absolute log path so users can find it.
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("CRITICAL PANIC: %v", r)
-			// Ensure terminal is reset even if p.Run() didn't exit cleanly
-			fmt.Printf("\n\nEncoutered a critical error: %v\nCheck debug.log for details.\n", r)
+			fmt.Printf("\n\nEncountered a critical error: %v\nCheck the log for details:\n  %s\n", r, cfg.LogPath)
 			os.Exit(1)
 		}
 	}()
 
-	// Phase 1: Load configuration from ~/.config/flowState/
-	cfg, err := config.Load()
+	// Initialize TUI application with storage connections.
+	application, err := app.New(cfg)
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to create app: %v\nLog: %s\n", err, cfg.LogPath)
+		os.Exit(1)
 	}
+	defer application.Close()
 
-	// Phase 1: Initialize TUI application with storage connections
-	app, err := app.New(cfg)
-	if err != nil {
-		log.Fatalf("Failed to create app: %v", err)
-	}
-	defer app.Close()
-
-	// Phase 1: Start Bubble Tea event loop with alternate screen
-	p := tea.NewProgram(app, tea.WithAltScreen())
+	// Start the Bubble Tea event loop with alternate screen.
+	p := tea.NewProgram(application, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error running app: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error running app: %v\nLog: %s\n", err, cfg.LogPath)
 		os.Exit(1)
 	}
 }

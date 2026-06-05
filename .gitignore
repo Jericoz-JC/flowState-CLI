@@ -5,6 +5,14 @@
 *.so
 *.dylib
 
+# Local build output of the flowstate binary (build into ./dist instead).
+# The extensionless name means *.exe rules above do not catch it, so it must
+# be listed explicitly to avoid committing a stale binary to the repo root.
+/flowstate
+/flowstate-*
+/cmd/flowState/flowState
+/cmd/flowState/flowstate
+
 # Test binary
 *.test
 
